@@ -39,7 +39,7 @@ const LoginScreen = () => {
       {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
         <VStack space={5} alignItems="center" justifyContent="center" mt="5%" px="5%">
           <Text fontSize="2xl" bold color="coolGray.800">Login</Text>
-          <Text fontSize="md" color="coolGray.600">Bem vindo de volta</Text>
+          <Text fontSize="md" color="coolGray.600">Seja bem vindo!</Text>
           <Box w="85%" maxW="300px">
             <Input
               placeholder="Email"
