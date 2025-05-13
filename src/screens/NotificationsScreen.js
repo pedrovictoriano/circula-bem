@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { FontAwesome } from '@expo/vector-icons';
 import BottomNavigationBar from '../screens/BottomNavigationBar';
 
 // Exemplo de dados para as notificações
 const sampleNotifications = [
   { id: '1', title: 'Produtos da Semana', details: 'Confira os melhores produtos da semana disponíveis!', date: '2024-05-07', icon: 'gift' },
   { id: '2', title: 'Atualização de Sistema', details: 'Seu sistema foi atualizado com sucesso.', date: '2024-05-01', icon: 'refresh' },
-  { id: '3', title: 'Atualização Cadastral', details: 'Excedeu o prazo de atualização do seu cadastro! Clique aqui para atualizar', date: '2024-04-26', icon: '' }
+  { id: '3', title: 'Atualização Cadastral', details: 'Excedeu o prazo de atualização do seu cadastro! Clique aqui para atualizar', date: '2024-04-26', icon: 'person' }
 ];
 
 const NotificationsScreen = () => {
@@ -28,7 +28,7 @@ const NotificationsScreen = () => {
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.notificationItem} onPress={() => handlePressNotification(item.id)}>
-            <Icon name={item.icon} size={24} style={styles.notificationIcon} />
+            <FontAwesome name={item.icon} size={24} style={styles.notificationIcon} />
             <View style={styles.notificationContent}>
               <Text style={styles.notificationTitle}>{item.title}</Text>
               <Text style={styles.notificationDetails}>{item.details}</Text>

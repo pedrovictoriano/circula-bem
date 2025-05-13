@@ -17,12 +17,12 @@ const FinalizeRentalScreen = ({ route }) => {
       return;
     }
 
-    const rentalData = {
-      userRegistrationNumber: renter.registrationNumber,
-      productId: product.id,
-      startDate: `${startDate}T00:00:00.000Z`,
-      endDate: `${endDate}T23:59:59.999Z`
-    };
+		const rentalData = {
+			product_id: product.id,
+			user_id: renter.id,
+			start_date: `${startDate}T00:00:00.000Z`,
+			end_date: `${endDate}T23:59:59.999Z`
+		};
 
     try {
       await createRental(rentalData);

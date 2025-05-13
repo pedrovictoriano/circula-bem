@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { fetchRentedDates } from '../services/api'; // Certifique-se de ajustar o caminho
+import { fetchRentedDates } from '../services/api';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
 const SelectDateScreen = () => {
@@ -17,6 +17,12 @@ const SelectDateScreen = () => {
     let today = new Date(year, month - 1, 1);
     let end = new Date(year, month, 0);
 
+    // Fallback caso availabilities não exista
+    if (!product.availabilities || !Array.isArray(product.availabilities)) {
+      product.availabilities = [1, 2, 3, 4, 5, 6, 7];
+    }
+
+    // Marca dias disponíveis com base nas disponibilidades
     while (today <= end) {
       const dayOfWeek = today.getDay();
       const dateString = today.toISOString().split('T')[0];
@@ -28,17 +34,22 @@ const SelectDateScreen = () => {
       today.setDate(today.getDate() + 1);
     }
 
+    // Pega datas já alugadas no mês atual
     const startDate = new Date(year, month - 1, 1).toISOString();
     const endDate = new Date(year, month, 0).toISOString();
 
     try {
       const rentedDates = await fetchRentedDates(product.id, startDate, endDate);
       rentedDates.forEach(rent => {
-        const start = new Date(rent.startDate);
-        const end = new Date(rent.endDate);
-        for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+        const start = new Date(rent.start_date);
+        const end = new Date(rent.end_date);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
           const rentedDateString = d.toISOString().split('T')[0];
-          availableDays[rentedDateString] = { disabled: true, marked: true, dotColor: '#0000ff' }; // Azul para dias alugados
+          availableDays[rentedDateString] = {
+            disabled: true,
+            marked: true,
+            dotColor: '#0000ff'
+          };
         }
       });
     } catch (error) {
@@ -56,7 +67,7 @@ const SelectDateScreen = () => {
   const handleDateSelect = (day) => {
     const dateString = day.dateString;
 
-    if (!markedDates[dateString].disabled) {
+    if (!markedDates[dateString]?.disabled) {
       let updatedMarkedDates = { ...markedDates };
       let newSelectedDates = [...selectedDates];
 
@@ -83,11 +94,11 @@ const SelectDateScreen = () => {
       const startDate = sortedDates[0];
       const endDate = sortedDates[sortedDates.length - 1];
 
-      navigation.navigate('FinalizeRental', { 
-        startDate, 
-        endDate, 
+      navigation.navigate('FinalizeRental', {
+        startDate,
+        endDate,
         selectedDates,
-        product, 
+        product,
         renter
       });
     } else {
@@ -98,7 +109,6 @@ const SelectDateScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.stepText}>Etapa 1 de 2</Text>
-      {/* Barra de progresso */}
       <View style={styles.progressBar}>
         <View style={styles.progressStepCompleted} />
         <View style={styles.progressStep1of2} />

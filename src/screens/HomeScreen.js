@@ -1,39 +1,36 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Dimensions } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { FontAwesome } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import BottomNavigationBar from '../screens/BottomNavigationBar';
-import { fetchProducts, fetchCategories, fetchUserById } from '../services/api'; // Certifique-se de ajustar o caminho de importação conforme necessário
+import { fetchProducts, fetchCategories, fetchUserById } from '../services/api';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
   const windowWidth = Dimensions.get('window').width;
-  const cardSize = windowWidth * 0.8; // Ajuste para o tamanho do card
+  const cardSize = windowWidth * 0.8;
   const sideSpacing = (windowWidth - cardSize) / 2;
   const scrollViewRef = useRef();
-  const [items, setItems] = useState([]); // Estado para armazenar os produtos
-  const [categories, setCategories] = useState([]); // Estado para armazenar as categorias
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [userLocation, setUserLocation] = useState("Carregando...");
 
   useEffect(() => {
     const loadUserData = async () => {
       try {
-        // Recupera o registrationNumber armazenado que é usado como userId
-        const userId = await AsyncStorage.getItem('registrationNumber');
+        const userId = await AsyncStorage.getItem('userId');
         if (!userId) {
           setUserLocation("Usuário não identificado");
           return;
         }
-
-        // Busca os detalhes do usuário usando o userId
         const userDetails = await fetchUserById(userId);
-        if (userDetails && userDetails.address) {
+        if (userDetails) {
           setUserLocation({
-            city: userDetails.address.city,
-            neighborhood: userDetails.address.neighborhood,
-            street: userDetails.address.street + ', ' + userDetails.address.number
+            city: userDetails.address_city,
+            neighborhood: userDetails.address_neighborhood,
+            street: `${userDetails.address_street}, ${userDetails.address_number}`
           });
         } else {
           setUserLocation("Localização não encontrada");
@@ -48,12 +45,10 @@ const HomeScreen = () => {
   }, []);
 
   useEffect(() => {
-    // Centralizar a visualização inicial
-    scrollViewRef.current.scrollTo({ x: sideSpacing, animated: false });
+    scrollViewRef.current?.scrollTo({ x: sideSpacing, animated: false });
   }, []);
 
   useEffect(() => {
-    // Função para buscar os produtos da API
     const loadProducts = async () => {
       try {
         const products = await fetchProducts();
@@ -66,7 +61,6 @@ const HomeScreen = () => {
   }, []);
 
   useEffect(() => {
-    // Função para buscar as categorias da API
     const loadCategories = async () => {
       try {
         const categories = await fetchCategories();
@@ -78,95 +72,90 @@ const HomeScreen = () => {
     loadCategories();
   }, []);
 
-  const handlePressSearch = () => {
-    navigation.navigate('SearchResults', { query: searchQuery });
-  };
-
   return (
     <View style={styles.container}>
-      {/* Header: Localização e Notificações */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.locationLabel}>Sua localização</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('LocationScreen')}>
-            <Text style={styles.locationText}>{`${userLocation.street}, ${userLocation.neighborhood}, ${userLocation.city}`} ▼</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-          <Icon name="bell" size={24} style={styles.notificationIcon} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Barra de Pesquisa */}
-      <View style={styles.searchContainer}>
-        <Icon name="search" size={20} color="gray" style={styles.searchIcon} />
-        <TextInput onPress={handlePressSearch}
-          style={styles.searchBar}
-          placeholder="O que você está procurando?"
-          placeholderTextColor="gray"
-        />
-      </View>
-
-      {/* Categorias */}
-      <View style={styles.categoriesContainer}>
-        <View style={styles.categoriesHeader}>
-          <Text style={styles.sectionTitle}>Categorias</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('AllCategories')}>
-            <Text style={styles.seeAllText}>Ver tudo</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {categories.map((category, index) => (
-            <TouchableOpacity key={index} style={styles.categoryItem}>
-              <View style={styles.categoryImageContainer}>
-                <Image source={{ uri: category.imageUrl }} style={styles.categoryImage} />
-              </View>
-              <Text style={styles.categoryText}>{category.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Listagem Próxima */}
-      <View style={styles.listingsContainer}>
-        <View style={styles.listingsHeader}>
+      <ScrollView>
+        {/* Header */}
+        <View style={styles.header}>
           <View>
-            <Text style={styles.sectionTitle}>Itens próximos</Text>
-            <Text style={styles.subtitleText}>Listagem selecionada com base na distância</Text>
+            <Text style={styles.locationLabel}>Sua localização</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('LocationScreen')}>
+              <Text style={styles.locationText}>
+                {typeof userLocation === 'string'
+                  ? userLocation
+                  : `${userLocation.street}, ${userLocation.neighborhood}, ${userLocation.city}`} ▼
+              </Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('AllListings')}>
-            <Text style={styles.seeAllText}>Ver tudo</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+            <FontAwesome name="bell" size={24} style={styles.notificationIcon} />
           </TouchableOpacity>
         </View>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.listingsScroll}
-        >
-          {items.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.listingItem, { width: cardSize, height: cardSize }]}
-              onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}>
-              <Image source={{ uri: item.imageUrls[0] }} style={styles.listingImage} />
-              <View style={styles.listingInfo}>
-                <Text style={styles.listingTitle}>{item.name}</Text>
-              </View>
-              <View style={styles.listingBadge}>
-                <Text style={styles.badgeText}>Disponível</Text>
-              </View>
-              <View style={styles.listingRating}>
-                <Icon name="star" size={14} color="#FFD700" />
-                <Text style={styles.ratingText}>4.8</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-          <View style={{ width: sideSpacing }} />
-        </ScrollView>
-      </View>
 
-      {/* Menu Fixo */}
+        {/* Barra de Pesquisa */}
+        <View style={styles.searchContainer}>
+          <FontAwesome name="search" size={20} color="gray" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchBar}
+            placeholder="O que você está procurando?"
+            placeholderTextColor="gray"
+            onChangeText={setSearchQuery}
+            onSubmitEditing={() => navigation.navigate('SearchResults', { query: searchQuery })}
+          />
+        </View>
+
+        {/* Categorias */}
+        <View style={styles.categoriesContainer}>
+          <View style={styles.categoriesHeader}>
+            <Text style={styles.sectionTitle}>Categorias</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('AllCategories')}>
+              <Text style={styles.seeAllText}>Ver tudo</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+            {categories.map((category, index) => (
+              <TouchableOpacity key={index} style={styles.categoryItem}>
+                <View style={styles.categoryImageContainer}>
+                  <Image source={{ uri: category.imageUrl }} style={styles.categoryImage} />
+                </View>
+                <Text style={styles.categoryText}>{category.description}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Listagem Próxima */}
+        <View style={styles.listingsContainer}>
+          <View style={styles.listingsHeader}>
+            <View>
+              <Text style={styles.sectionTitle}>Itens próximos</Text>
+              <Text style={styles.subtitleText}>Listagem selecionada com base na distância</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('AllListings')}>
+              <Text style={styles.seeAllText}>Ver tudo</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.listingsScroll}
+          >
+            {items.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.listingItem, { width: cardSize, height: cardSize }]}
+                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+              >
+                <Image source={{ uri: item.product_images?.[0]?.image_url }} style={styles.listingImage} />
+                <View style={styles.listingInfo}>
+                  <Text style={styles.listingTitle}>{item.name}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </ScrollView>
       <BottomNavigationBar />
     </View>
   );

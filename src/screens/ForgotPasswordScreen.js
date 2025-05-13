@@ -1,51 +1,98 @@
 import React, { useState } from 'react';
-import { VStack, Input, Button, Text, Link, Box, useToast } from 'native-base';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, Alert} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { supabase } from '../services/supabaseClient';
 
 const ForgotPasswordScreen = () => {
   const [email, setEmail] = useState('');
   const navigation = useNavigation();
-  const toast = useToast();
 
-  const handleResetPassword = () => {
-    // Simulação de envio de link de reset de senha
-    if (email) {
-      console.log('Reset password link sent to:', email);
-      toast.show({
-        description: "Reset link sent to your email.",
-        status: "success",
-        duration: 4000,
-        isClosable: true,
-      });
-      navigation.goBack(); // Retornar à tela anterior ou redirecionar conforme necessário
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert('Erro', 'Por favor, insira um e-mail válido');
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'circulabem://reset-password',
+    });
+
+    if (error) {
+      Alert.alert('Erro', error.message || 'Algo deu errado!');
     } else {
-      toast.show({
-        description: "Please enter a valid email address.",
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
+      Alert.alert('Sucesso', 'Link enviado para o seu e-mail!');
+      navigation.goBack();
     }
   };
 
   return (
-    <VStack space={4} alignItems="center" justifyContent="center" mt="10%" px="5%">
-      <Text fontSize="xl" bold>Reset Your Password</Text>
-      <Text>Please enter your email address to receive a link to reset your password.</Text>
-      <Box w="85%" maxW="300px">
-        <Input
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          mt="2"
-          w="full"
-        />
-      </Box>
-      <Button w="85%" maxW="300px" mt="2" onPress={handleResetPassword} bg="primary.500" _text={{ color: "white" }}>
-        Send Reset Link
-      </Button>
-    </VStack>
+    <View style={styles.container}>
+      <Text style={styles.title}>Redefina sua senha</Text>
+      <Text style={styles.subtitle}>
+        Informe seu e-mail para receber um link de redefinição de senha.
+      </Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        placeholderTextColor="#999"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+
+      <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
+        <Text style={styles.buttonText}>Enviar link de redefinição</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 export default ForgotPasswordScreen;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    paddingTop: 80,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#111',
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    color: '#444',
+    marginBottom: 20,
+  },
+  input: {
+    width: '100%',
+    maxWidth: 300,
+    height: 45,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+    color: '#000'
+  },
+  button: {
+    backgroundColor: '#233ED9',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    width: '100%',
+    maxWidth: 300,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+});

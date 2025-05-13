@@ -1,5 +1,8 @@
 {
   "expo": {
+		"scheme": "circulabem",
+    "deepLinks": ["circulabem://"],
+    "platforms": ["ios", "android", "web"],
     "name": "CirculaBem",
     "slug": "CirculaBem",
     "version": "1.0.0",

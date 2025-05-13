@@ -1,10 +1,56 @@
 import React from 'react';
+import * as Linking from 'expo-linking';
+import { Text } from 'react-native';
+import 'react-native-url-polyfill/auto';
 import { NavigationContainer } from '@react-navigation/native';
 import { NativeBaseProvider, extendTheme } from 'native-base';
 import AppNavigator from './src/navigation/AppNavigator';
 import { useFonts, Roboto_400Regular, Roboto_700Bold } from '@expo-google-fonts/roboto';
 import { LogBox } from 'react-native';
+
 LogBox.ignoreAllLogs();
+
+const prefix = Linking.createURL('/');
+
+const linking = {
+  prefixes: [prefix, 'circulabem://'],
+  config: {
+    screens: {
+      ResetPassword: 'reset-password',
+    },
+  },
+};
+
+// Corrigido: extendTheme precisa vir de NativeBase v3+.
+const theme = extendTheme({
+  colors: {
+    primary: {
+      500: '#233ED9',
+    },
+    secondary: {
+      500: '#16E024',
+    },
+    background: {
+      50: '#F2F2F2',
+      100: '#FFFFFF',
+    },
+  },
+  fontConfig: {
+    Roboto: {
+      400: {
+        normal: 'RobotoRegular',
+      },
+      700: {
+        normal: 'RobotoBold',
+      },
+    },
+  },
+  fonts: {
+    heading: 'Roboto',
+    body: 'Roboto',
+    mono: 'Roboto',
+  },
+});
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -13,46 +59,12 @@ export default function App() {
   });
 
   if (!fontsLoaded) {
-    return null;  // Ou algum componente de loading/spinner
+    return <Text style={{ padding: 20 }}>Carregando fontes...</Text>;
   }
-
-  // Configuração do tema com a fonte Roboto
-  const theme = extendTheme({
-    colors: {
-      // Adicionando novas cores
-      primary: {
-        500: '#233ED9', // Azul
-      },
-      secondary: {
-        500: '#16E024', // Verde
-      },
-      background: {
-        50: '#F2F2F2', // Branco suave
-        100: '#FFFFFF'  // Branco puro, se necessário
-      }
-    },
-    fontConfig: {
-      Roboto: {
-        400: {
-          normal: 'RobotoRegular',
-          italic: 'Roboto_Italic',
-        },
-        700: {
-          normal: 'RobotoBold',
-          italic: 'Roboto_BoldItalic',
-        },
-      },
-    },
-    fonts: {
-      heading: 'Roboto',
-      body: 'Roboto',
-      mono: 'Roboto',
-    },
-  });
 
   return (
     <NativeBaseProvider theme={theme}>
-      <NavigationContainer>
+      <NavigationContainer linking={linking}>
         <AppNavigator />
       </NavigationContainer>
     </NativeBaseProvider>

@@ -1,23 +1,17 @@
 import React from 'react';
-import { VStack, Input, Button, Icon, Text, Link, Divider, Box, useToast } from 'native-base';
-import { MaterialIcons } from '@expo/vector-icons';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { authenticateUser } from '../services/api';
 
-// Esquema de validação Yup para login
 const loginValidationSchema = Yup.object().shape({
-  email: Yup.string()
-    .email('Por favor, insira um email válido')
-    .required('O email é obrigatório'),
-  password: Yup.string()
-    .required('A senha é obrigatória'),
+  email: Yup.string().email('Email inválido').required('O email é obrigatório'),
+  password: Yup.string().required('A senha é obrigatória'),
 });
 
 const LoginScreen = () => {
   const navigation = useNavigation();
-  const toast = useToast();
 
   return (
     <Formik
@@ -25,64 +19,67 @@ const LoginScreen = () => {
       validationSchema={loginValidationSchema}
       onSubmit={async (values, actions) => {
         try {
-          const data = await authenticateUser(values);
-          toast.show({ description: "Login realizado com sucesso!", status: "success", duration: 3000 });
+          await authenticateUser(values);
+          Alert.alert('Sucesso', 'Login realizado com sucesso!');
           navigation.navigate('Home');
         } catch (error) {
-          toast.show({ description: "Falha no login. Verifique suas credenciais.", status: "error", duration: 3000 });
-          console.error(error);
+          Alert.alert('Erro', 'Falha no login. Verifique suas credenciais.');
         } finally {
           actions.setSubmitting(false);
         }
       }}
     >
       {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
-        <VStack space={5} alignItems="center" justifyContent="center" mt="5%" px="5%">
-          <Text fontSize="2xl" bold color="coolGray.800">Login</Text>
-          <Text fontSize="md" color="coolGray.600">Seja bem vindo!</Text>
-          <Box w="85%" maxW="300px">
-            <Input
-              placeholder="Email"
-              value={values.email}
-              onChangeText={handleChange('email')}
-              onBlur={handleBlur('email')}
-              fontSize="md"
-              py="3"
-              InputLeftElement={<Icon as={MaterialIcons} name="email" size="sm" m="2" color="muted.400" />}
-              isInvalid={touched.email && errors.email}
-            />
-            {touched.email && errors.email &&
-              <Text color="danger.600" fontSize="xs">{errors.email}</Text>
-            }
-            <Input
-              placeholder="Senha"
-              value={values.password}
-              onChangeText={handleChange('password')}
-              onBlur={handleBlur('password')}
-              type="password"
-              fontSize="md"
-              py="3"
-              InputLeftElement={<Icon as={MaterialIcons} name="lock" size="sm" m="2" color="muted.400" />}
-              isInvalid={touched.password && errors.password}
-            />
-            {touched.password && errors.password &&
-              <Text color="danger.600" fontSize="xs">{errors.password}</Text>
-            }
-            <Link _text={{ fontSize: "sm", color: "blue.500", bold: true }} alignSelf="flex-end" onPress={() => navigation.navigate('ForgotPassword')}>
-              Esqueceu sua senha?
-            </Link>
-          </Box>
-          <Button onPress={handleSubmit} isLoading={isSubmitting} w="85%" maxW="300px" bg="primary.500" py="3" _text={{ color: "white" }}>
-            Login
-          </Button>
-          <Divider my="3" w="85%" maxW="300px" />
-          <Link _text={{ fontSize: "sm", color: "blue.600" }} onPress={() => navigation.navigate('SignUp')}>
-            Não tem uma conta? Inscrever-se
-          </Link>
-        </VStack>
+        <View style={styles.container}>
+          <Text style={styles.title}>Login</Text>
+          <Text style={styles.subtitle}>Seja bem vindo!</Text>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            keyboardType="email-address"
+            onChangeText={handleChange('email')}
+            onBlur={handleBlur('email')}
+            value={values.email}
+          />
+          {touched.email && errors.email && <Text style={styles.error}>{errors.email}</Text>}
+
+          <TextInput
+            style={styles.input}
+            placeholder="Senha"
+            secureTextEntry
+            onChangeText={handleChange('password')}
+            onBlur={handleBlur('password')}
+            value={values.password}
+          />
+          {touched.password && errors.password && <Text style={styles.error}>{errors.password}</Text>}
+
+          <TouchableOpacity onPress={handleSubmit} style={styles.button} disabled={isSubmitting}>
+            {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+            <Text style={styles.link}>Esqueceu sua senha?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
+            <Text style={styles.link}>Não tem uma conta? Inscrever-se</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </Formik>
   );
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center' },
+  subtitle: { fontSize: 16, textAlign: 'center', marginBottom: 20 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 10 },
+  error: { color: 'red', fontSize: 12, marginBottom: 10 },
+  button: { backgroundColor: '#233ED9', padding: 15, borderRadius: 8, alignItems: 'center', marginVertical: 10 },
+  buttonText: { color: '#fff', fontWeight: 'bold' },
+  link: { color: '#233ED9', textAlign: 'center', marginTop: 10 }
+});
 
 export default LoginScreen;

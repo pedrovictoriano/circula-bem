@@ -9,6 +9,7 @@ import ProductDetailScreen from '../screens/ProductDetailScreen';
 import SelectDateScreen from '../screens/SelectDateScreen';
 import FinalizeRentalScreen from '../screens/FinalizeRentalScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +25,7 @@ const AppNavigator = () => {
       <Stack.Screen name="SelectDate" component={SelectDateScreen} options={{ title: 'Selecione a data' }} />
       <Stack.Screen name="FinalizeRental" component={FinalizeRentalScreen} options={{ title: 'Finalizar aluguel' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifcações' }} />
+			<Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nova Senha' }} />
     </Stack.Navigator>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { FontAwesome } from '@expo/vector-icons';
 import BottomNavigationBar from '../screens/BottomNavigationBar';
 import { fetchProducts } from '../services/api';
 
@@ -13,16 +13,24 @@ const SearchResultsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     setLoading(true);
-    fetchProducts().then(data => {
-      setProducts(data);
-      setFilteredProducts(data);  // Inicia com todos os produtos
-      setLoading(false);
-    }).catch(error => {
-      console.error('Erro ao buscar produtos:', error);
-      setLoading(false);
-    });
+    fetchProducts()
+      .then(data => {
+        setProducts(data);
+        setFilteredProducts(data); // começa com todos
+        setLoading(false);
+      })
+      .catch(error => {
+        console.error('Erro ao buscar produtos:', error);
+        setLoading(false);
+      });
   }, []);
 
+  // Aplica a busca inicial se vier via rota
+  useEffect(() => {
+    if (query) setSearchQuery(query);
+  }, [query]);
+
+  // Filtro local
   useEffect(() => {
     const filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -43,6 +51,7 @@ const SearchResultsScreen = ({ route, navigation }) => {
           onChangeText={setSearchQuery}
         />
       </View>
+
       {/* Barra de Filtros */}
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersScroll}>
@@ -54,6 +63,7 @@ const SearchResultsScreen = ({ route, navigation }) => {
           ))}
         </ScrollView>
       </View>
+
       {/* Lista de Produtos */}
       <FlatList
         data={filteredProducts}
@@ -61,7 +71,10 @@ const SearchResultsScreen = ({ route, navigation }) => {
         renderItem={({ item }) => (
           <View style={styles.listingItem}>
             <TouchableOpacity onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}>
-              <Image source={{ uri: item.imageUrls[0] }} style={styles.listingImage} />
+              <Image
+                source={{ uri: item.product_images?.[0]?.image_url || 'https://via.placeholder.com/150' }}
+                style={styles.listingImage}
+              />
               <View style={styles.listingInfo}>
                 <Text style={styles.listingTitle}>{item.name}</Text>
               </View>
@@ -69,6 +82,7 @@ const SearchResultsScreen = ({ route, navigation }) => {
           </View>
         )}
       />
+
       {/* Menu Fixo */}
       <BottomNavigationBar />
     </View>
@@ -111,9 +125,9 @@ const styles = StyleSheet.create({
   filterButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#e1e1e1', // Um cinza mais claro para diferenciar do fundo
+    backgroundColor: '#e1e1e1',
     borderRadius: 20,
-    marginHorizontal: 6, // Adiciona espaço entre os botões
+    marginHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -122,7 +136,7 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 16,
-    color: '#333', // Cor de texto mais escura para contraste
+    color: '#333',
   },
   listingItem: {
     backgroundColor: '#f8f8f8',
@@ -132,7 +146,7 @@ const styles = StyleSheet.create({
   },
   listingImage: {
     width: '100%',
-    height: 150,  // Definir um valor fixo ou usar uma porcentagem conforme necessário
+    height: 150,
     borderRadius: 10,
   },
   listingInfo: {
@@ -142,10 +156,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  listingPrice: {
-    fontSize: 14,
-    color: 'gray',
-  }
 });
 
 export default SearchResultsScreen;
