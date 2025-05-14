@@ -66,15 +66,15 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
     registration_number: regNum,
   });
 
-	await insertIntoTable('adresses', {
+	await insertIntoTable('addresses', {
     user_id: userId,
-    cep: address.cep,
-    state: address.state,
-    city: address.city,
-    neighborhood: address.neighborhood,
-    street: address.street,
-    number: address.number,
-    complement: address.complement
+    cep: addresses.cep,
+    state: addresses.state,
+    city: addresses.city,
+    neighborhood: addresses.neighborhood,
+    street: addresses.street,
+    number: addresses.number,
+    complement: addresses.complement
   });
 
   return { userId };
