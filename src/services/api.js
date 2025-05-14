@@ -7,7 +7,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SUPABASE_URL = 'https://gcwjfkswymioiwhuaiku.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjd2pma3N3eW1pb2l3aHVhaWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5Mjc1OTUsImV4cCI6MjA2MDUwMzU5NX0.h8ciNTFQpAoHB0Tik8ktUDvpJR-FzsWFGrQo1uN3MFQ'; // substitua pela real
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjd2pma3N3eW1pb2l3aHVhaWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5Mjc1OTUsImV4cCI6MjA2MDUwMzU5NX0.h8ciNTFQpAoHB0Tik8ktUDvpJR-FzsWFGrQo1uN3MFQ';
 
 export const fetchProducts = async () => {
   return await getTable('products');
@@ -22,9 +22,12 @@ export const fetchCategories = async () => {
   return await getTable('categories');
 };
 
-export const fetchUserById = async (registrationNumber) => {
-  const result = await getTable('user_extra_information', `registration_number=eq.${registrationNumber}`);
+export const fetchUserById = async (userId) => {
+  const result = await getTable('user_extra_information', `user_id=eq.${userId}`);
+	const addresses = await getTable('addresses', `user_id=eq.${userId}`);
+	result[0].addresses = addresses;
   return result?.[0] || null;
+	
 };
 
 export const fetchRentedDates = async (productId, startDate, endDate) => {
@@ -54,43 +57,60 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
   const authData = await authResponse.json();
   if (!authResponse.ok) throw new Error(authData?.msg || 'Erro ao registrar');
 
-  const userId = authData.user?.id;
+  const userId = authData.user?.id || authData.id;
 
   await insertIntoTable('user_extra_information', {
     user_id: userId,
     first_name: name,
     last_name: surName,
     registration_number: regNum,
-    address_cep: address.cep,
-    address_state: address.state,
-    address_city: address.city,
-    address_neighborhood: address.neighborhood,
-    address_street: address.street,
-    address_number: address.number,
-    address_complement: address.complement
+  });
+
+	await insertIntoTable('adresses', {
+    user_id: userId,
+    cep: address.cep,
+    state: address.state,
+    city: address.city,
+    neighborhood: address.neighborhood,
+    street: address.street,
+    number: address.number,
+    complement: address.complement
   });
 
   return { userId };
 };
 
 export const authenticateUser = async ({ email, password }) => {
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ email, password })
-  });
+  try {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(data?.msg || 'Erro de autenticação');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.msg || 'Erro de autenticação');
 
-  const token = data.access_token;
-  const user = data.user;
+    const token = data.access_token;
 
-  await AsyncStorage.setItem('token', token);
-  await AsyncStorage.setItem('userId', user.id);
+    const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${token}`
+      }
+    });
 
-  return { token, user };
+    const userData = await userResponse.json();
+
+    await AsyncStorage.setItem('token', token);
+    await AsyncStorage.setItem('userId', userData.id);
+
+    return { token, user: userData };
+  } catch (error) {
+    console.error('Erro ao autenticar usuário:', error);
+    throw error;
+  }
 };

@@ -35,7 +35,7 @@ const BottomNavigationBar = () => {
         </View>
         <Text style={styles.menuText}>Favoritos</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => handlePress('Profile')} style={styles.menuItem}>
+      <TouchableOpacity onPress={() => handlePress('ProfileScreen')} style={styles.menuItem}>
         <View style={[styles.iconContainer, activeTab === 'Profile' && styles.activeIcon]}>
           <FontAwesome name="user" size={24} style={styles.menuIcon} />
         </View>

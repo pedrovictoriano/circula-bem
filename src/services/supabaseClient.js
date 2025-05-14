@@ -12,18 +12,30 @@ export async function getTable(table, filters = '') {
 }
 
 export async function insertIntoTable(table, data) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-      Prefer: 'return=representation',
-    },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(`Erro ao inserir na tabela "${table}": ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Erro em insertIntoTable:', error);
+    throw error;
+  }
 }
+
 
 export async function updateTableById(table, id, data) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {

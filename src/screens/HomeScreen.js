@@ -26,11 +26,12 @@ const HomeScreen = () => {
           return;
         }
         const userDetails = await fetchUserById(userId);
+				console.log(userDetails);
         if (userDetails) {
           setUserLocation({
-            city: userDetails.address_city,
-            neighborhood: userDetails.address_neighborhood,
-            street: `${userDetails.address_street}, ${userDetails.address_number}`
+            city: userDetails.addresses[0].city,
+            neighborhood: userDetails.addresses[0].neighborhood,
+            street: `${userDetails.addresses[0].street}, ${userDetails.addresses[0].number}`
           });
         } else {
           setUserLocation("Localização não encontrada");
