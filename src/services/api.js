@@ -5,6 +5,7 @@ import {
   deleteFromTableById
 } from './supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 
 const SUPABASE_URL = 'https://gcwjfkswymioiwhuaiku.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjd2pma3N3eW1pb2l3aHVhaWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5Mjc1OTUsImV4cCI6MjA2MDUwMzU5NX0.h8ciNTFQpAoHB0Tik8ktUDvpJR-FzsWFGrQo1uN3MFQ';
@@ -68,13 +69,13 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
 
 	await insertIntoTable('addresses', {
     user_id: userId,
-    cep: addresses.cep,
-    state: addresses.state,
-    city: addresses.city,
-    neighborhood: addresses.neighborhood,
-    street: addresses.street,
-    number: addresses.number,
-    complement: addresses.complement
+    cep: address.cep,
+    state: address.state,
+    city: address.city,
+    neighborhood: address.neighborhood,
+    street: address.street,
+    number: address.number,
+    complement: address.complement
   });
 
   return { userId };
@@ -112,5 +113,25 @@ export const authenticateUser = async ({ email, password }) => {
   } catch (error) {
     console.error('Erro ao autenticar usuário:', error);
     throw error;
+  }
+};
+
+export const fetchAddressByCEP = async (cep) => {
+  try {
+    const cleanCEP = cep.replace(/\D/g, '');
+    const response = await axios.get(`https://viacep.com.br/ws/${cleanCEP}/json/`);
+    
+    if (response.data.erro) {
+      throw new Error('CEP não encontrado');
+    }
+    
+    return {
+      street: response.data.logradouro,
+      neighborhood: response.data.bairro,
+      city: response.data.localidade,
+      state: response.data.uf,
+    };
+  } catch (error) {
+    throw new Error('Erro ao buscar CEP: ' + error.message);
   }
 };

@@ -1,161 +1,130 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, Dimensions } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import BottomNavigationBar from '../screens/BottomNavigationBar';
-import { fetchProducts, fetchCategories, fetchUserById } from '../services/api';
+// import { fetchProducts, fetchCategories } from '../services/api';
+import { mockCategories, mockProducts } from '../temp/mockData';
+
+const INFO_CARDS = [
+  { icon: 'clock-outline', label: 'Ativos', value: 5 },
+  { icon: 'timer-sand', label: 'Pendentes', value: 2 },
+  { icon: 'clipboard-list-outline', label: 'Total', value: 12 },
+];
 
 const HomeScreen = () => {
   const navigation = useNavigation();
-  const windowWidth = Dimensions.get('window').width;
-  const cardSize = windowWidth * 0.8;
-  const sideSpacing = (windowWidth - cardSize) / 2;
-  const scrollViewRef = useRef();
-  const [items, setItems] = useState([]);
+  const [userName, setUserName] = useState('');
+  const [profilePic, setProfilePic] = useState('https://i.pravatar.cc/150?img=12');
   const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [userLocation, setUserLocation] = useState("Carregando...");
 
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userId = await AsyncStorage.getItem('userId');
-        if (!userId) {
-          setUserLocation("Usuário não identificado");
-          return;
-        }
-        const userDetails = await fetchUserById(userId);
-				console.log(userDetails);
-        if (userDetails) {
-          setUserLocation({
-            city: userDetails.addresses[0].city,
-            neighborhood: userDetails.addresses[0].neighborhood,
-            street: `${userDetails.addresses[0].street}, ${userDetails.addresses[0].number}`
-          });
-        } else {
-          setUserLocation("Localização não encontrada");
-        }
-      } catch (error) {
-        console.error('Erro ao buscar detalhes do usuário:', error);
-        setUserLocation("Erro ao carregar localização");
-      }
-    };
-
-    loadUserData();
+    // const loadData = async () => {
+    //   try {
+    //     const cats = await fetchCategories();
+    //     setCategories(cats);
+    //     const prods = await fetchProducts();
+    //     setProducts(prods);
+    //   } catch (error) {
+    //     // handle error
+    //   }
+    // };
+    // loadData();
+    setCategories(mockCategories);
+    setProducts(mockProducts);
   }, []);
 
-  useEffect(() => {
-    scrollViewRef.current?.scrollTo({ x: sideSpacing, animated: false });
-  }, []);
-
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const products = await fetchProducts();
-        setItems(products);
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-      }
-    };
-    loadProducts();
-  }, []);
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const categories = await fetchCategories();
-        setCategories(categories);
-      } catch (error) {
-        console.error('Erro ao carregar categorias:', error);
-      }
-    };
-    loadCategories();
-  }, []);
+  // Filter products by search
+  const filteredProducts = products.filter(product =>
+    product.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.locationLabel}>Sua localização</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('LocationScreen')}>
-              <Text style={styles.locationText}>
-                {typeof userLocation === 'string'
-                  ? userLocation
-                  : `${userLocation.street}, ${userLocation.neighborhood}, ${userLocation.city}`} ▼
-              </Text>
+          <Image source={{ uri: profilePic }} style={styles.profilePic} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity style={styles.headerIcon}>
+              <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerIcon}>
+              <MaterialCommunityIcons name="cog-outline" size={26} color="#222" />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
-            <FontAwesome name="bell" size={24} style={styles.notificationIcon} />
-          </TouchableOpacity>
         </View>
 
-        {/* Barra de Pesquisa */}
+        {/* Search Bar */}
         <View style={styles.searchContainer}>
-          <FontAwesome name="search" size={20} color="gray" style={styles.searchIcon} />
+          <MaterialCommunityIcons name="magnify" size={22} color="#B0B0B0" style={styles.searchIcon} />
           <TextInput
             style={styles.searchBar}
-            placeholder="O que você está procurando?"
-            placeholderTextColor="gray"
+            placeholder="Search..."
+            placeholderTextColor="#B0B0B0"
+            value={searchQuery}
             onChangeText={setSearchQuery}
-            onSubmitEditing={() => navigation.navigate('SearchResults', { query: searchQuery })}
           />
         </View>
 
-        {/* Categorias */}
-        <View style={styles.categoriesContainer}>
-          <View style={styles.categoriesHeader}>
-            <Text style={styles.sectionTitle}>Categorias</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('AllCategories')}>
-              <Text style={styles.seeAllText}>Ver tudo</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-            {categories.map((category, index) => (
-              <TouchableOpacity key={index} style={styles.categoryItem}>
-                <View style={styles.categoryImageContainer}>
-                  <Image source={{ uri: category.imageUrl }} style={styles.categoryImage} />
-                </View>
-                <Text style={styles.categoryText}>{category.description}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Info Cards */}
+        <View style={styles.infoCardsRow}>
+          {INFO_CARDS.map((card, idx) => (
+            <View key={idx} style={styles.infoCard}>
+              <View style={styles.infoCardIconWrap}>
+                <MaterialCommunityIcons name={card.icon} size={28} color="#4F8CFF" />
+              </View>
+              <Text style={styles.infoCardValue}>{card.value}</Text>
+              <Text style={styles.infoCardLabel}>{card.label}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Listagem Próxima */}
-        <View style={styles.listingsContainer}>
-          <View style={styles.listingsHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Itens próximos</Text>
-              <Text style={styles.subtitleText}>Listagem selecionada com base na distância</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('AllListings')}>
-              <Text style={styles.seeAllText}>Ver tudo</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            ref={scrollViewRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.listingsScroll}
-          >
-            {items.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.listingItem, { width: cardSize, height: cardSize }]}
-                onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-              >
-                <Image source={{ uri: item.product_images?.[0]?.image_url }} style={styles.listingImage} />
-                <View style={styles.listingInfo}>
-                  <Text style={styles.listingTitle}>{item.name}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+        {/* Categories */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Categories</Text>
+          <TouchableOpacity>
+            <Text style={styles.viewAll}>View All</Text>
+          </TouchableOpacity>
         </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+          {categories.map((category, index) => (
+            <TouchableOpacity key={index} style={styles.categoryItem}>
+              <View style={styles.categoryImageContainer}>
+                <Image source={{ uri: category.imageUrl }} style={styles.categoryImage} />
+              </View>
+              <Text style={styles.categoryText}>{category.description}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* Products */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Products</Text>
+        </View>
+        <FlatList
+          data={filteredProducts}
+          keyExtractor={item => item.id?.toString()}
+          horizontal={false}
+          numColumns={2}
+          contentContainerStyle={styles.productsGrid}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.productCard}
+              onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+            >
+              <Image
+                source={{ uri: item.product_images?.[0]?.image_url || 'https://via.placeholder.com/150' }}
+                style={styles.productImage}
+              />
+              <Text style={styles.productTitle}>{item.name}</Text>
+              <Text style={styles.productPrice}>{item.price ? `R$ ${item.price.toFixed(2)}` : ''}</Text>
+            </TouchableOpacity>
+          )}
+        />
       </ScrollView>
       <BottomNavigationBar />
     </View>
@@ -163,152 +132,179 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F7F8FA',
+  },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 10,
   },
-  locationLabel: {
-    fontSize: 12,
-    color: 'gray',
+  profilePic: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#fff',
+    backgroundColor: '#eee',
   },
-  locationText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  notificationIcon: {
-    color: 'gray',
+  headerIcon: {
+    marginLeft: 18,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 2,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f2f2f2',
-    borderRadius: 20,
-    marginHorizontal: 10,
-    paddingHorizontal: 10,
-    marginTop: 10,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    marginHorizontal: 20,
+    paddingHorizontal: 14,
+    marginTop: 8,
+    height: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
   searchIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   searchBar: {
     flex: 1,
-    height: 40,
-    backgroundColor: '#f2f2f2',
-    borderRadius: 20,
-    paddingHorizontal: 10,
+    fontSize: 16,
+    color: '#222',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
   },
-  categoriesContainer: {
-    paddingHorizontal: 10,
-    marginTop: 20,
+  infoCardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginTop: 18,
+    marginBottom: 8,
   },
-  categoriesHeader: {
+  infoCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    alignItems: 'center',
+    paddingVertical: 18,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  infoCardIconWrap: {
+    backgroundColor: '#E8F0FE',
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 8,
+  },
+  infoCardValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#222',
+  },
+  infoCardLabel: {
+    fontSize: 13,
+    color: '#888',
+    marginTop: 2,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: 'bold',
+    color: '#222',
   },
-  seeAllText: {
-    color: 'grey',
+  viewAll: {
+    fontSize: 14,
+    color: '#4F8CFF',
+    fontWeight: 'bold',
   },
   categoriesScroll: {
-    marginTop: 10,
+    marginHorizontal: 10,
+    marginBottom: 10,
   },
   categoryItem: {
-    marginRight: 10,
     alignItems: 'center',
-    width: 100, // Largura fixa para ajustar o texto
+    marginRight: 16,
+    width: 80,
   },
   categoryImageContainer: {
-    backgroundColor: '#f2f2f2', // Fundo cinza
+    backgroundColor: '#f2f2f2',
     borderRadius: 25,
     padding: 10,
+    marginBottom: 6,
   },
   categoryImage: {
-    width: 50,
-    height: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   categoryText: {
-    marginTop: 5,
-    textAlign: 'center', // Centralizar texto
-    flexWrap: 'wrap', // Permitir quebra de linha
+    fontSize: 12,
+    color: '#333',
+    textAlign: 'center',
   },
-  listingsContainer: {
+  productsGrid: {
     paddingHorizontal: 10,
-    marginTop: 20,
+    paddingBottom: 20,
   },
-  listingsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  subtitleText: {
-    fontSize: 14,
-    color: 'gray',
-    marginTop: 5,
-  },
-  listingsScroll: {
-    marginTop: 10,
-    alignItems: 'center',
-  },
-  listingItem: {
-    marginRight: 10,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 10,
-    padding: 10,
-    position: 'relative',
-    justifyContent: 'center',
-  },
-  listingImage: {
-    width: '100%',
-    height: '70%',
-    borderRadius: 10,
-  },
-  listingInfo: {
-    marginTop: 5,
-  },
-  listingTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  listingPrice: {
-    fontSize: 14,
-    color: 'gray',
-  },
-  listingBadge: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: '#d4edda',  // Verde claro
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#155724',  // Verde escuro
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  listingRating: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    marginLeft: 5,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  container: {
+  productCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    margin: 8,
     flex: 1,
-    backgroundColor: 'white', // Certifique-se de que o fundo principal seja branco
+    alignItems: 'center',
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+    minWidth: 150,
+    maxWidth: '48%',
+  },
+  productImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#eee',
+  },
+  productTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#222',
+    textAlign: 'center',
+  },
+  productPrice: {
+    fontSize: 13,
+    color: '#4F8CFF',
+    marginTop: 2,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

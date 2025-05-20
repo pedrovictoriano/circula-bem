@@ -1,10 +1,12 @@
-import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
-import axios from 'axios';
-import { registerUser } from '../services/api';
+import { registerUser, fetchAddressByCEP } from '../services/api';
+import KeyboardDismissView from '../components/KeyboardDismissView';
+import LoadingOverlay from '../components/LoadingOverlay';
+import { useLoading } from '../hooks/useLoading';
 
 function validateCPF(cpf) {
   cpf = cpf.replace(/[^\d]+/g, '');
@@ -37,9 +39,61 @@ const schema = Yup.object().shape({
 
 const SignUpScreen = () => {
   const navigation = useNavigation();
+  const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  const { isLoading, loadingMessage, withLoading } = useLoading();
+  
+  // Create refs for all inputs
+  const inputRefs = {
+    name: useRef(null),
+    surName: useRef(null),
+    email: useRef(null),
+    pwd: useRef(null),
+    regNum: useRef(null),
+    cep: useRef(null),
+    state: useRef(null),
+    city: useRef(null),
+    neighborhood: useRef(null),
+    street: useRef(null),
+    number: useRef(null),
+    complement: useRef(null)
+  };
+
+  const handleCEPBlur = async (cep, setFieldValue) => {
+    if (cep.length !== 8) return;
+    
+    setIsLoadingCEP(true);
+    try {
+      const addressData = await fetchAddressByCEP(cep);
+      setFieldValue('street', addressData.street);
+      setFieldValue('neighborhood', addressData.neighborhood);
+      setFieldValue('city', addressData.city);
+      setFieldValue('state', addressData.state);
+      inputRefs.number.current?.focus();
+    } catch (error) {
+      Alert.alert('Erro', error.message);
+    } finally {
+      setIsLoadingCEP(false);
+    }
+  };
+
+  const handleSubmitEditing = (currentField) => {
+    const fields = [
+      'name', 'surName', 'email', 'pwd', 'regNum',
+      'cep', 'state', 'city', 'neighborhood', 'street',
+      'number', 'complement'
+    ];
+    
+    const currentIndex = fields.indexOf(currentField);
+    if (currentIndex < fields.length - 1) {
+      inputRefs[fields[currentIndex + 1]].current?.focus();
+    } else {
+      // If it's the last field, dismiss keyboard
+      Keyboard.dismiss();
+    }
+  };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardDismissView contentContainerStyle={styles.scrollContainer}>
       <Formik
         initialValues={{
           name: '', surName: '', email: '', pwd: '', regNum: '',
@@ -54,37 +108,93 @@ const SignUpScreen = () => {
             neighborhood: values.neighborhood, street: values.street,
             number: values.number, complement: values.complement
           };
+
           try {
-            await registerUser({
-              email: values.email,
-              pwd: values.pwd,
-              name: values.name,
-              surName: values.surName,
-              regNum: values.regNum.replace(/\D/g, ''),
-              address
-            });
+            await withLoading(
+              registerUser({
+                email: values.email,
+                pwd: values.pwd,
+                name: values.name,
+                surName: values.surName,
+                regNum: values.regNum.replace(/\D/g, ''),
+                address
+              }),
+              'Criando sua conta...'
+            );
             Alert.alert('Sucesso', 'Usuário cadastrado com sucesso!');
             navigation.navigate('Login');
           } catch (err) {
-            Alert.alert('Erro', 'Falha ao registrar.');
+            if (err.message === 'Email not confirmed') {
+              Alert.alert(
+                'Email não confirmado',
+                'Por favor, verifique sua caixa de entrada e confirme seu email antes de fazer login. Se não recebeu o email, verifique também sua pasta de spam.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => navigation.navigate('Login')
+                  }
+                ]
+              );
+            } else {
+              Alert.alert('Erro', 'Falha ao registrar. Por favor, tente novamente.');
+            }
             console.error(err);
           }
         }}
       >
-        {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
-          <>
+        {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
+          <View style={styles.container}>
             <Text style={styles.title}>Inscrição</Text>
-            {[['Nome', 'name'], ['Sobrenome', 'surName'], ['Email', 'email'], ['Senha', 'pwd'], ['CPF', 'regNum'], ['CEP', 'cep'], ['Estado', 'state'], ['Cidade', 'city'], ['Bairro', 'neighborhood'], ['Rua', 'street'], ['Número', 'number'], ['Complemento', 'complement']].map(([label, field]) => (
-              <View key={field}>
+            {[
+              ['Nome', 'name'], 
+              ['Sobrenome', 'surName'], 
+              ['Email', 'email'], 
+              ['Senha', 'pwd'], 
+              ['CPF', 'regNum'], 
+              ['CEP', 'cep'], 
+              ['Estado', 'state'], 
+              ['Cidade', 'city'], 
+              ['Bairro', 'neighborhood'], 
+              ['Rua', 'street'], 
+              ['Número', 'number'], 
+              ['Complemento', 'complement']
+            ].map(([label, field]) => (
+              <View key={field} style={styles.inputContainer}>
                 <TextInput
+                  ref={inputRefs[field]}
                   style={styles.input}
                   placeholder={label}
                   secureTextEntry={field === 'pwd'}
-                  onChangeText={handleChange(field)}
-                  onBlur={handleBlur(field)}
+                  onChangeText={(text) => {
+                    handleChange(field)(text);
+                    if (field === 'cep') {
+                      const cleanCEP = text.replace(/\D/g, '');
+                      setFieldValue('cep', cleanCEP);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    handleBlur(field)(e);
+                    if (field === 'cep') {
+                      handleCEPBlur(values.cep, setFieldValue);
+                    }
+                  }}
                   value={values[field]}
+                  autoCapitalize={field === 'email' ? 'none' : 'words'}
+                  keyboardType={
+                    field === 'email' ? 'email-address' :
+                    field === 'regNum' || field === 'cep' || field === 'number' ? 'numeric' :
+                    'default'
+                  }
+                  editable={field === 'cep' ? !isLoadingCEP : true}
+                  returnKeyType={field === 'complement' ? 'done' : 'next'}
+                  onSubmitEditing={() => handleSubmitEditing(field)}
                 />
-                {touched[field] && errors[field] && <Text style={styles.error}>{errors[field]}</Text>}
+                {field === 'cep' && isLoadingCEP && (
+                  <ActivityIndicator size="small" color="#233ED9" style={styles.loadingIndicator} />
+                )}
+                {touched[field] && errors[field] && (
+                  <Text style={styles.error}>{errors[field]}</Text>
+                )}
               </View>
             ))}
             <TouchableOpacity onPress={handleSubmit} style={styles.button}>
@@ -93,21 +203,72 @@ const SignUpScreen = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
               <Text style={styles.link}>Tem uma conta? Conecte-se</Text>
             </TouchableOpacity>
-          </>
+          </View>
         )}
       </Formik>
-    </ScrollView>
+      <LoadingOverlay visible={isLoading} message={loadingMessage} />
+    </KeyboardDismissView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, marginBottom: 10 },
-  error: { color: 'red', fontSize: 12, marginBottom: 10 },
-  button: { backgroundColor: '#233ED9', padding: 15, borderRadius: 8, alignItems: 'center', marginVertical: 10 },
-  buttonText: { color: '#fff', fontWeight: 'bold' },
-  link: { color: '#233ED9', textAlign: 'center', marginTop: 10 }
+  scrollContainer: {
+    flexGrow: 1,
+    backgroundColor: '#fff',
+  },
+  container: { 
+    padding: 20,
+    backgroundColor: '#fff',
+    paddingTop: 40,
+    paddingBottom: 40,
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    textAlign: 'center', 
+    marginBottom: 30 
+  },
+  inputContainer: {
+    marginBottom: 15,
+    position: 'relative',
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: '#ccc', 
+    borderRadius: 8, 
+    padding: 12,
+    backgroundColor: '#fff',
+    fontSize: 16,
+  },
+  error: { 
+    color: 'red', 
+    fontSize: 12, 
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  button: { 
+    backgroundColor: '#233ED9', 
+    padding: 15, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    marginVertical: 20 
+  },
+  buttonText: { 
+    color: '#fff', 
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  link: { 
+    color: '#233ED9', 
+    textAlign: 'center', 
+    marginTop: 10,
+    fontSize: 16,
+  },
+  loadingIndicator: {
+    position: 'absolute',
+    right: 10,
+    top: 12,
+  }
 });
 
 export default SignUpScreen;
