@@ -1,96 +1,199 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+
+const NAV_ITEMS = [
+  { key: 'Home', icon: 'home-outline', label: 'Home' },
+  { key: 'MyRents', icon: 'clipboard-list-outline', label: 'Aluguéis' },
+  { key: 'Add', icon: 'plus', label: '' },
+  { key: 'Reports', icon: 'file-chart-outline', label: 'Relatórios' },
+  { key: 'Settings', icon: 'cog-outline', label: 'Configs.' },
+];
 
 const BottomNavigationBar = () => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('Home');
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const handlePress = (screen) => {
+    if (screen === 'Add') {
+      setAddModalVisible(true);
+      return;
+    }
     setActiveTab(screen);
     navigation.navigate(screen);
   };
 
+  const handleAddOption = (option) => {
+    setAddModalVisible(false);
+    if (option === 'group') {
+      navigation.navigate('CreateGroup');
+    } else if (option === 'product') {
+      navigation.navigate('CreateProduct');
+    }
+  };
+
   return (
-    <View style={styles.fixedMenu}>
-      <TouchableOpacity onPress={() => handlePress('Home')} style={styles.menuItem}>
-        <View style={[styles.iconContainer, activeTab === 'Home' && styles.activeIcon]}>
-          <FontAwesome name="home" size={24} style={styles.menuIcon} />
-        </View>
-        <Text style={styles.menuText}>Home</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => handlePress('Chat')} style={styles.menuItem}>
-        <View style={[styles.iconContainer, activeTab === 'Chat' && styles.activeIcon]}>
-          <FontAwesome name="file-text" size={24} style={styles.menuIcon} />
-        </View>
-        <Text style={styles.menuText}>Aluguéis</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => handlePress('AddNewItem')} style={styles.addButton}>
-        <FontAwesome name="plus" size={24} color="white" />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => handlePress('Wishlist')} style={styles.menuItem}>
-        <View style={[styles.iconContainer, activeTab === 'Wishlist' && styles.activeIcon]}>
-          <FontAwesome name="heart" size={24} style={styles.menuIcon} />
-        </View>
-        <Text style={styles.menuText}>Favoritos</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => handlePress('ProfileScreen')} style={styles.menuItem}>
-        <View style={[styles.iconContainer, activeTab === 'Profile' && styles.activeIcon]}>
-          <FontAwesome name="user" size={24} style={styles.menuIcon} />
-        </View>
-        <Text style={styles.menuText}>Perfil</Text>
-      </TouchableOpacity>
+    <View style={styles.outerContainer}>
+      <View style={styles.pillBar}>
+        {NAV_ITEMS.map((item, idx) => {
+          if (item.key === 'Add') {
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => handlePress(item.key)}
+                style={styles.addButtonContainer}
+                activeOpacity={0.8}
+              >
+                <View style={styles.addButton}>
+                  <MaterialCommunityIcons name={item.icon} size={32} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            );
+          }
+          const isActive = activeTab === item.key;
+          return (
+            <TouchableOpacity
+              key={item.key}
+              onPress={() => handlePress(item.key)}
+              style={styles.menuItem}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name={item.icon}
+                size={26}
+                color={isActive ? '#2563eb' : '#A0A0A0'}
+                style={styles.menuIcon}
+              />
+              {item.label ? (
+                <Text style={[styles.menuText, isActive && styles.menuTextActive]}>{item.label}</Text>
+              ) : null}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Modal
+        visible={addModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAddModalVisible(false)}
+      >
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setAddModalVisible(false)}>
+          <View style={styles.addModal}>
+            <TouchableOpacity style={styles.addModalOption} onPress={() => handleAddOption('group')}>
+              <MaterialCommunityIcons name="account-group-outline" size={24} color="#2563eb" />
+              <Text style={styles.addModalText}>Criar Grupo</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addModalOption} onPress={() => handleAddOption('product')}>
+              <MaterialCommunityIcons name="cube-outline" size={24} color="#2563eb" />
+              <Text style={styles.addModalText}>Criar Produto</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  fixedMenu: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+  outerContainer: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1a1918',
-    paddingVertical: 5,
+    bottom: 0,
+    alignItems: 'center',
+    zIndex: 100,
+    backgroundColor: 'transparent',
+  },
+  pillBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '96%',
+    alignSelf: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 32,
+    height: 70,
+    marginBottom: Platform.OS === 'ios' ? 24 : 12,
+    marginTop: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 6,
+    paddingHorizontal: 10,
   },
   menuItem: {
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 5,
-  },
-  iconContainer: {
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  activeIcon: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    backgroundColor: '#233ED9',
-    borderRadius: 5,
-    shadowColor: '#1a1918',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 2,
+    height: '100%',
   },
   menuIcon: {
-    color: 'white',
+    marginBottom: 2,
   },
   menuText: {
-    color: 'white',
+    color: '#A0A0A0',
     fontSize: 12,
-    marginTop: 3,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  menuTextActive: {
+    color: '#2563eb',
+    fontWeight: 'bold',
+  },
+  addButtonContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 70,
+    marginTop: -24,
   },
   addButton: {
-    backgroundColor: '#233ED9',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    backgroundColor: '#2563eb',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-  }
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addModal: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 220,
+  },
+  addModalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    width: '100%',
+  },
+  addModalText: {
+    fontSize: 16,
+    color: '#2563eb',
+    marginLeft: 12,
+    fontWeight: 'bold',
+  },
 });
 
 export default BottomNavigationBar;
