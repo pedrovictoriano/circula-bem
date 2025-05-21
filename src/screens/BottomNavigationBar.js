@@ -74,6 +74,7 @@ const BottomNavigationBar = () => {
         })}
       </View>
       <Modal
+        id="addModal"
         visible={addModalVisible}
         transparent
         animationType="fade"
