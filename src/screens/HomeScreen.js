@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import BottomNavigationBar from '../screens/BottomNavigationBar';
-// import { fetchProducts, fetchCategories } from '../services/api';
-import { mockCategories, mockProducts } from '../temp/mockData';
+import { fetchCategories } from '../services/categoryService';
+import { fetchProducts } from '../services/productService';
 
 const INFO_CARDS = [
   { icon: 'clock-outline', label: 'Ativos', value: 5 },
@@ -20,112 +20,151 @@ const HomeScreen = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const cats = await fetchCategories();
+      setCategories(cats);
+      const prods = await fetchProducts();
+      console.log(prods);
+      setProducts(prods);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    // const loadData = async () => {
-    //   try {
-    //     const cats = await fetchCategories();
-    //     setCategories(cats);
-    //     const prods = await fetchProducts();
-    //     setProducts(prods);
-    //   } catch (error) {
-    //     // handle error
-    //   }
-    // };
-    // loadData();
-    setCategories(mockCategories);
-    setProducts(mockProducts);
+    loadData();
   }, []);
 
-  // Filter products by search
+  const onRefresh = () => {
+    setRefreshing(true);
+    console.log('onRefresh', new Date().toISOString());
+    loadData();
+  };
+
+  const renderHeader = () => (
+    <>
+      {/* Header */}
+      <View style={styles.header}>
+        <Image source={{ uri: profilePic }} style={styles.profilePic} />
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity style={styles.headerIcon}>
+            <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerIcon}>
+            <MaterialCommunityIcons name="cog-outline" size={26} color="#222" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <MaterialCommunityIcons name="magnify" size={22} color="#B0B0B0" style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search..."
+          placeholderTextColor="#B0B0B0"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Info Cards */}
+      <View style={styles.infoCardsRow}>
+        {INFO_CARDS.map((card, idx) => (
+          <View key={idx} style={styles.infoCard}>
+            <View style={styles.infoCardIconWrap}>
+              <MaterialCommunityIcons name={card.icon} size={28} color="#4F8CFF" />
+            </View>
+            <Text style={styles.infoCardValue}>{card.value}</Text>
+            <Text style={styles.infoCardLabel}>{card.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Categories */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Categories</Text>
+        <TouchableOpacity>
+          <Text style={styles.viewAll}>View All</Text>
+        </TouchableOpacity>
+      </View>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <Text>Carregando categorias...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Erro ao carregar categorias: {error}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={categories}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.categoryItem}>
+              <View style={styles.categoryImageContainer}>
+                <Image source={{ uri: item.image_url }} style={styles.categoryImage} />
+              </View>
+              <Text style={styles.categoryText}>{item.description}</Text>
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.categoriesScroll}
+        />
+      )}
+
+      {/* Products Header */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Products</Text>
+      </View>
+    </>
+  );
+
   const filteredProducts = products.filter(product =>
     product.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Image source={{ uri: profilePic }} style={styles.profilePic} />
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <MaterialCommunityIcons name="cog-outline" size={26} color="#222" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <MaterialCommunityIcons name="magnify" size={22} color="#B0B0B0" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Search..."
-            placeholderTextColor="#B0B0B0"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        {/* Info Cards */}
-        <View style={styles.infoCardsRow}>
-          {INFO_CARDS.map((card, idx) => (
-            <View key={idx} style={styles.infoCard}>
-              <View style={styles.infoCardIconWrap}>
-                <MaterialCommunityIcons name={card.icon} size={28} color="#4F8CFF" />
-              </View>
-              <Text style={styles.infoCardValue}>{card.value}</Text>
-              <Text style={styles.infoCardLabel}>{card.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Categories */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Categories</Text>
-          <TouchableOpacity>
-            <Text style={styles.viewAll}>View All</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {categories.map((category, index) => (
-            <TouchableOpacity key={index} style={styles.categoryItem}>
-              <View style={styles.categoryImageContainer}>
-                <Image source={{ uri: category.imageUrl }} style={styles.categoryImage} />
-              </View>
-              <Text style={styles.categoryText}>{category.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Products */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Products</Text>
-        </View>
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={item => item.id?.toString()}
-          horizontal={false}
-          numColumns={2}
-          contentContainerStyle={styles.productsGrid}
-          renderItem={({ item }) => (
+      <FlatList
+        data={filteredProducts}
+        keyExtractor={item => item.id?.toString()}
+        numColumns={2}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.productsGrid}
+        renderItem={({ item }) => {
+          // Busca a imagem que termina com _0.jpg
+          const previewImage = item.product_images?.find(img =>
+            img.image_url && img.image_url.endsWith('_0.jpg')
+          );
+          return (
             <TouchableOpacity
               style={styles.productCard}
               onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
             >
               <Image
-                source={{ uri: item.product_images?.[0]?.image_url || 'https://via.placeholder.com/150' }}
+                source={{ uri: previewImage?.image_url || 'https://via.placeholder.com/150' }}
                 style={styles.productImage}
               />
               <Text style={styles.productTitle}>{item.name}</Text>
               <Text style={styles.productPrice}>{item.price ? `R$ ${item.price.toFixed(2)}` : ''}</Text>
             </TouchableOpacity>
-          )}
-        />
-      </ScrollView>
+          );
+        }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+      />
       <BottomNavigationBar />
     </View>
   );
@@ -243,8 +282,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   categoriesScroll: {
-    marginHorizontal: 10,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
   },
   categoryItem: {
     alignItems: 'center',
@@ -304,6 +343,18 @@ const styles = StyleSheet.create({
     color: '#4F8CFF',
     marginTop: 2,
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
     textAlign: 'center',
   },
 });

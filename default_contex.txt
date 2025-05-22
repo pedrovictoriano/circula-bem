@@ -1,0 +1,119 @@
+# O PROJETO É BRASILEIRO, SEMPRE UTILIZE O PT-BR.
+
+# TABELAS:
+
+create table public.user_extra_information (
+  registration_number character varying not null,
+  first_name character varying(50) not null,
+  last_name character varying(50) not null,
+  user_id uuid null default auth.uid (),
+  constraint PK_user primary key (registration_number),
+  constraint user_registrationnumber_key unique (registration_number),
+  constraint user_extra_information_user_id_fkey foreign KEY (user_id) references auth.users (id) on update RESTRICT on delete CASCADE
+) TABLESPACE pg_default;
+
+create table public.rents (
+  product_id uuid not null,
+  start_date timestamp without time zone not null,
+  end_date timestamp without time zone not null,
+  id uuid not null,
+  user_id uuid null default auth.uid (),
+  constraint rent_pkey primary key (product_id, start_date, end_date),
+  constraint FK_rent_product_productid foreign KEY (product_id) references products (id) on delete CASCADE,
+  constraint rent_user_id_fkey foreign KEY (user_id) references auth.users (id) on update CASCADE on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists "IX_rent_productid" on public.rents using btree (product_id) TABLESPACE pg_default;
+
+create table public.products (
+  id uuid not null,
+  name character varying(100) not null,
+  description character varying(300) not null,
+  price numeric(8, 2) not null,
+  category_id uuid not null,
+  availabilities dia_da_semana[] not null,
+  user_id uuid null default auth.uid (),
+  constraint PK_product primary key (id),
+  constraint product_category_id_fkey foreign KEY (category_id) references categories (id) on delete CASCADE,
+  constraint products_user_id_fkey foreign KEY (user_id) references auth.users (id) on update CASCADE on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists "IX_product_categoryid" on public.products using btree (category_id) TABLESPACE pg_default;
+
+create table public.product_images (
+  id uuid not null,
+  product_id uuid not null,
+  image_url character varying(300) not null,
+  constraint PK_productimage primary key (id),
+  constraint product_images_product_id_fkey foreign KEY (product_id) references products (id) on update CASCADE on delete CASCADE
+) TABLESPACE pg_default;
+
+create table public.groups (
+  id uuid not null default gen_random_uuid (),
+  name character varying null,
+  description text null,
+  created_at date null default now(),
+  image_url text null,
+  handle character varying null,
+  invite_link character varying null,
+  constraint groups_pkey primary key (id)
+) TABLESPACE pg_default;
+
+create table public.group_members (
+  id uuid not null default gen_random_uuid (),
+  created_at timestamp with time zone not null default now(),
+  group_id uuid not null,
+  user_id uuid not null,
+  role public.group_member_role null,
+  status public.group_member_status null,
+  invited_by uuid not null,
+  joined_at timestamp without time zone not null default now(),
+  constraint group_members_pkey primary key (id),
+  constraint group_members_group_id_fkey foreign KEY (group_id) references groups (id) on update CASCADE on delete CASCADE,
+  constraint group_members_invited_by_fkey foreign KEY (invited_by) references auth.users (id),
+  constraint group_members_user_id_fkey foreign KEY (user_id) references auth.users (id)
+) TABLESPACE pg_default;
+
+create table public.categories (
+  id uuid not null default gen_random_uuid (),
+  description text not null,
+  image_url text not null,
+  constraint PK_category primary key (id),
+  constraint category_Description_key unique (description)
+) TABLESPACE pg_default;
+
+create table public.addresses (
+  id uuid not null default gen_random_uuid (),
+  cep text not null,
+  state character(2) not null,
+  city character varying(100) not null,
+  neighborhood character varying(100) not null,
+  street character varying(100) not null,
+  number smallint not null,
+  complement character varying(100) not null,
+  user_id uuid null default auth.uid (),
+  constraint PK_adresses primary key (id),
+  constraint adresses_user_id_fkey foreign KEY (user_id) references auth.users (id) on update RESTRICT on delete CASCADE
+) TABLESPACE pg_default;
+
+# ENUMERATED TYPES:
+
+create type public.dia_da_semana as enum (
+  'domingo',
+  'segunda',
+  'terça-feira', 
+  'quarta-feira',
+  'quinta-feira',
+  'sexta-feira',
+  'sábado'
+);
+
+create type public.group_member_role as enum (
+  'admin',
+  'membro'
+);
+
+create type public.group_member_status as enum (
+  'pendente',
+  'ativo'
+);
