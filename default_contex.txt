@@ -14,11 +14,10 @@ create table public.user_extra_information (
 
 create table public.rents (
   product_id uuid not null,
-  start_date timestamp without time zone not null,
-  end_date timestamp without time zone not null,
+  date timestamp without time zone not null,
   id uuid not null,
   user_id uuid null default auth.uid (),
-  constraint rent_pkey primary key (product_id, start_date, end_date),
+  constraint rents_pkey primary key (product_id, date),
   constraint FK_rent_product_productid foreign KEY (product_id) references products (id) on delete CASCADE,
   constraint rent_user_id_fkey foreign KEY (user_id) references auth.users (id) on update CASCADE on delete CASCADE
 ) TABLESPACE pg_default;
