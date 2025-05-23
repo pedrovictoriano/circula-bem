@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -14,19 +14,38 @@ const NAV_ITEMS = [
 const BottomNavigationBar = () => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('Home');
-  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const animation = useRef(new Animated.Value(0)).current;
 
   const handlePress = (screen) => {
     if (screen === 'Add') {
-      setAddModalVisible(true);
+      toggleAddMenu();
       return;
     }
     setActiveTab(screen);
     navigation.navigate(screen);
   };
 
+  const toggleAddMenu = () => {
+    const toValue = isAddMenuOpen ? 0 : 1;
+    
+    Animated.spring(animation, {
+      toValue,
+      friction: 5,
+      useNativeDriver: false,
+    }).start();
+    
+    setIsAddMenuOpen(!isAddMenuOpen);
+  };
+
   const handleAddOption = (option) => {
-    setAddModalVisible(false);
+    setIsAddMenuOpen(false);
+    Animated.spring(animation, {
+      toValue: 0,
+      friction: 5,
+      useNativeDriver: false,
+    }).start();
+    
     if (option === 'group') {
       navigation.navigate('CreateGroup');
     } else if (option === 'product') {
@@ -34,22 +53,97 @@ const BottomNavigationBar = () => {
     }
   };
 
+  // Simplificando as animações
+  const productButtonStyle = {
+    opacity: animation,
+    transform: [
+      {
+        translateX: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -50],
+        }),
+      },
+      {
+        translateY: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -20],
+        }),
+      },
+      {
+        scale: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 1],
+        }),
+      },
+    ],
+  };
+
+  const groupButtonStyle = {
+    opacity: animation,
+    transform: [
+      {
+        translateX: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 50],
+        }),
+      },
+      {
+        translateY: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -20],
+        }),
+      },
+      {
+        scale: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 1],
+        }),
+      },
+    ],
+  };
+
+  const addButtonRotation = {
+    transform: [
+      {
+        rotate: animation.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0deg', '45deg'],
+        }),
+      },
+    ],
+  };
+
   return (
     <View style={styles.outerContainer}>
+      {/* FAB expandable buttons */}
+      <View style={styles.fabContainer}>
+        <Animated.View style={[styles.fabButton, styles.fabSecondary, productButtonStyle]}>
+          <TouchableOpacity onPress={() => handleAddOption('product')} style={styles.fabTouchable}>
+            <MaterialCommunityIcons name="cube-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View style={[styles.fabButton, styles.fabSecondary, groupButtonStyle]}>
+          <TouchableOpacity onPress={() => handleAddOption('group')} style={styles.fabTouchable}>
+            <MaterialCommunityIcons name="account-group-outline" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+
+      {/* Bottom Navigation Bar */}
       <View style={styles.pillBar}>
         {NAV_ITEMS.map((item, idx) => {
           if (item.key === 'Add') {
             return (
-              <TouchableOpacity
-                key={item.key}
-                onPress={() => handlePress(item.key)}
-                style={styles.addButtonContainer}
-                activeOpacity={0.8}
-              >
-                <View style={styles.addButton}>
+              <Animated.View key={item.key} style={[styles.addButtonContainer, addButtonRotation]}>
+                <TouchableOpacity
+                  onPress={() => handlePress(item.key)}
+                  style={styles.addButton}
+                  activeOpacity={0.8}
+                >
                   <MaterialCommunityIcons name={item.icon} size={32} color="#fff" />
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </Animated.View>
             );
           }
           const isActive = activeTab === item.key;
@@ -73,26 +167,6 @@ const BottomNavigationBar = () => {
           );
         })}
       </View>
-      <Modal
-        id="addModal"
-        visible={addModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAddModalVisible(false)}
-      >
-        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setAddModalVisible(false)}>
-          <View style={styles.addModal}>
-            <TouchableOpacity style={styles.addModalOption} onPress={() => handleAddOption('group')}>
-              <MaterialCommunityIcons name="account-group-outline" size={24} color="#2563eb" />
-              <Text style={styles.addModalText}>Criar Grupo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.addModalOption} onPress={() => handleAddOption('product')}>
-              <MaterialCommunityIcons name="cube-outline" size={24} color="#2563eb" />
-              <Text style={styles.addModalText}>Criar Produto</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </View>
   );
 };
@@ -164,36 +238,40 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+  fabContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 200,
+  },
+  fabButton: {
+    position: 'absolute',
+    bottom: 90,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 10,
+    zIndex: 201,
+  },
+  fabTouchable: {
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addModal: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 8,
-    minWidth: 220,
-  },
-  addModalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    width: '100%',
-  },
-  addModalText: {
-    fontSize: 16,
-    color: '#2563eb',
-    marginLeft: 12,
-    fontWeight: 'bold',
+  fabSecondary: {
+    backgroundColor: '#2563eb',
   },
 });
 

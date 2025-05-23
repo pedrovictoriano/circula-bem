@@ -12,6 +12,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CreateProduct from '../screens/CreateProduct';
+import CreateGroup from '../screens/CreateGroup';
 
 const Stack = createStackNavigator();
 
@@ -34,6 +35,7 @@ const AppNavigator = () => {
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Nova Senha' }} />
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: 'Perfil' }} />
       <Stack.Screen name="CreateProduct" component={CreateProduct} />
+      <Stack.Screen name="CreateGroup" component={CreateGroup} options={{ title: 'Criar Grupo' }} />
     </Stack.Navigator>
   );
 };
