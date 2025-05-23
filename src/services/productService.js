@@ -145,4 +145,43 @@ export const fetchProducts = async () => {
     console.error('Erro ao buscar produtos:', error);
     throw new Error(error.message || 'Falha ao buscar produtos');
   }
+};
+
+export const fetchProductById = async (productId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    
+    const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/products?id=eq.${productId}&select=*,product_images:product_images(image_url,product_id)`, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_CONFIG.KEY,
+        'Authorization': `Bearer ${token || SUPABASE_CONFIG.KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data || data.length === 0) {
+      throw new Error('Produto não encontrado');
+    }
+
+    // Ordena as imagens para garantir que a _0 seja a primeira
+    const product = data[0];
+    return {
+      ...product,
+      product_images: (product.product_images || []).sort((a, b) => {
+        if (!a.image_url || !b.image_url) return 0;
+        return a.image_url > b.image_url ? 1 : -1;
+      })
+    };
+  } catch (error) {
+    console.error('Erro ao buscar produto por ID:', error);
+    throw new Error(error.message || 'Falha ao buscar produto');
+  }
 }; 
