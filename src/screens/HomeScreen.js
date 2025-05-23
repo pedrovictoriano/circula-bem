@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -30,7 +30,6 @@ const HomeScreen = () => {
       const cats = await fetchCategories();
       setCategories(cats);
       const prods = await fetchProducts();
-      console.log(prods);
       setProducts(prods);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -47,7 +46,6 @@ const HomeScreen = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    console.log('onRefresh', new Date().toISOString());
     loadData();
   };
 
@@ -55,8 +53,11 @@ const HomeScreen = () => {
     <>
       {/* Header */}
       <View style={styles.header}>
-        <Image source={{ uri: profilePic }} style={styles.profilePic} />
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+          <Image source={{ uri: profilePic }} style={styles.profilePic} />
+        </View>
+        <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
             <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
           </TouchableOpacity>
@@ -136,7 +137,7 @@ const HomeScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id?.toString()}
@@ -166,7 +167,7 @@ const HomeScreen = () => {
         onRefresh={onRefresh}
       />
       <BottomNavigationBar />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -180,16 +181,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 15,
     paddingBottom: 10,
+    backgroundColor: '#F7F8FA',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 80,
+    height: 32,
+    marginRight: 12,
   },
   profilePic: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: '#fff',
     backgroundColor: '#eee',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerIcon: {
     marginLeft: 18,

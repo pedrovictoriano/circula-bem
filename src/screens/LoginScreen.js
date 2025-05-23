@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -38,12 +38,18 @@ const LoginScreen = () => {
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched, isSubmitting }) => (
           <View style={styles.container}>
-            <Text style={styles.title}>Login</Text>
-            <Text style={styles.subtitle}>Seja bem vindo!</Text>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            </View>
+            
+            <Text style={styles.title}>Bem-vindo!</Text>
+            <Text style={styles.subtitle}>Faça login para continuar</Text>
 
             <TextInput
               style={styles.input}
               placeholder="Email"
+              placeholderTextColor="#999"
               keyboardType="email-address"
               onChangeText={handleChange('email')}
               onBlur={handleBlur('email')}
@@ -55,6 +61,7 @@ const LoginScreen = () => {
             <TextInput
               style={styles.input}
               placeholder="Senha"
+              placeholderTextColor="#999"
               secureTextEntry
               onChangeText={handleChange('password')}
               onBlur={handleBlur('password')}
@@ -63,7 +70,7 @@ const LoginScreen = () => {
             {touched.password && errors.password && <Text style={styles.error}>{errors.password}</Text>}
 
             <TouchableOpacity onPress={handleSubmit} style={styles.button} disabled={isSubmitting}>
-              {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
+              {isSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Entrar</Text>}
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
@@ -71,7 +78,7 @@ const LoginScreen = () => {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-              <Text style={styles.link}>Não tem uma conta? Inscrever-se</Text>
+              <Text style={styles.link}>Não tem uma conta? <Text style={styles.linkBold}>Criar conta</Text></Text>
             </TouchableOpacity>
           </View>
         )}
@@ -85,45 +92,75 @@ const styles = StyleSheet.create({
     flex: 1, 
     padding: 20, 
     justifyContent: 'center', 
-    backgroundColor: '#fff' 
+    backgroundColor: '#F7F8FA' 
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 40
+  },
+  logo: {
+    width: 120,
+    height: 120
   },
   title: { 
-    fontSize: 28, 
+    fontSize: 32, 
     fontWeight: 'bold', 
-    textAlign: 'center' 
+    textAlign: 'center',
+    color: '#222',
+    marginBottom: 8
   },
   subtitle: { 
     fontSize: 16, 
     textAlign: 'center', 
-    marginBottom: 20 
+    marginBottom: 30,
+    color: '#666'
   },
   input: { 
     borderWidth: 1, 
-    borderColor: '#ccc', 
-    borderRadius: 8, 
-    padding: 12, 
-    marginBottom: 10 
+    borderColor: '#E0E0E0', 
+    borderRadius: 12, 
+    padding: 16, 
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    fontSize: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   error: { 
-    color: 'red', 
+    color: '#FF6B6B', 
     fontSize: 12, 
-    marginBottom: 10 
+    marginBottom: 10,
+    marginLeft: 4
   },
   button: { 
-    backgroundColor: '#233ED9', 
-    padding: 15, 
-    borderRadius: 8, 
+    backgroundColor: '#4F8CFF', 
+    padding: 16, 
+    borderRadius: 12, 
     alignItems: 'center', 
-    marginVertical: 10 
+    marginVertical: 20,
+    shadowColor: '#4F8CFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonText: { 
     color: '#fff', 
-    fontWeight: 'bold' 
+    fontWeight: 'bold',
+    fontSize: 16
   },
   link: { 
-    color: '#233ED9', 
+    color: '#666', 
     textAlign: 'center', 
-    marginTop: 10 
+    marginTop: 15,
+    fontSize: 15
+  },
+  linkBold: {
+    fontWeight: 'bold',
+    color: '#4F8CFF'
   }
 });
 

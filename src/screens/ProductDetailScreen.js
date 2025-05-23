@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView, SafeAreaView } from 'react-native';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchProductById } from '../services/productService';
 import { fetchUserById } from '../services/api';
@@ -34,144 +34,146 @@ const ProductDetailScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F8CFF" />
         <Text style={styles.loadingText}>Carregando produto...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!product) {
     return (
-      <View style={styles.errorContainer}>
+      <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>Produto não encontrado.</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>Voltar</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const productImages = product.product_images || [];
   
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#222" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.headerButton}>
-          <MaterialCommunityIcons name="heart-outline" size={24} color="#222" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Image Gallery */}
-      <View style={styles.imageContainer}>
-        {productImages.length > 0 ? (
-          <ScrollView 
-            horizontal 
-            pagingEnabled 
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={(event) => {
-              const index = Math.floor(event.nativeEvent.contentOffset.x / windowWidth);
-              setCurrentImageIndex(index);
-            }}
-          >
-            {productImages.map((img, index) => (
-              <Image
-                key={index}
-                source={{ uri: img.image_url }}
-                style={[styles.productImage, { width: windowWidth }]}
-                resizeMode="cover"
-              />
-            ))}
-          </ScrollView>
-        ) : (
-          <Image
-            source={{ uri: 'https://via.placeholder.com/300x200/cccccc/666666?text=Sem+Imagem' }}
-            style={[styles.productImage, { width: windowWidth }]}
-            resizeMode="cover"
-          />
-        )}
-        
-        {/* Image indicators */}
-        {productImages.length > 1 && (
-          <View style={styles.imageIndicators}>
-            {productImages.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  { backgroundColor: index === currentImageIndex ? '#4F8CFF' : '#E0E0E0' }
-                ]}
-              />
-            ))}
-          </View>
-        )}
-      </View>
-
-      <View style={styles.detailsContainer}>
-        <Text style={styles.title}>{product.name}</Text>
-        
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>R$ {product.price ? product.price.toFixed(2) : '0,00'}</Text>
-          <Text style={styles.priceLabel}>/ dia</Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#222" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerButton}>
+            <MaterialCommunityIcons name="heart-outline" size={24} color="#222" />
+          </TouchableOpacity>
         </View>
 
-        <Text style={styles.location}>
-          {renter?.addresses?.[0] 
-            ? `${renter.addresses[0].neighborhood}, ${renter.addresses[0].city} - ${renter.addresses[0].state}` 
-            : 'Localização não disponível'}
-        </Text>
-
-        <View style={styles.ratingContainer}>
-          <FontAwesome name="star" size={14} color="#FFD700" />
-          <Text style={styles.ratingText}>4.7</Text>
-          <Text style={styles.reviewCount}>(64 avaliações)</Text>
-        </View>
-
-        {/* Seller Info */}
-        {renter && (
-          <View style={styles.sellerContainer}>
+        {/* Image Gallery */}
+        <View style={styles.imageContainer}>
+          {productImages.length > 0 ? (
+            <ScrollView 
+              horizontal 
+              pagingEnabled 
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(event) => {
+                const index = Math.floor(event.nativeEvent.contentOffset.x / windowWidth);
+                setCurrentImageIndex(index);
+              }}
+            >
+              {productImages.map((img, index) => (
+                <Image
+                  key={index}
+                  source={{ uri: img.image_url }}
+                  style={[styles.productImage, { width: windowWidth }]}
+                  resizeMode="cover"
+                />
+              ))}
+            </ScrollView>
+          ) : (
             <Image
-              source={{ uri: 'https://i.pravatar.cc/150?img=8' }}
-              style={styles.sellerImage}
+              source={{ uri: 'https://via.placeholder.com/300x200/cccccc/666666?text=Sem+Imagem' }}
+              style={[styles.productImage, { width: windowWidth }]}
+              resizeMode="cover"
             />
-            <View style={styles.sellerInfo}>
-              <Text style={styles.sellerName}>{renter.first_name} {renter.last_name}</Text>
-              <Text style={styles.verifiedText}>Conta verificada</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Availability */}
-        {product.availabilities && product.availabilities.length > 0 && (
-          <View style={styles.availabilityContainer}>
-            <Text style={styles.sectionTitle}>Disponibilidade</Text>
-            <View style={styles.availabilityTags}>
-              {product.availabilities.map((day, index) => (
-                <View key={index} style={styles.availabilityTag}>
-                  <Text style={styles.availabilityText}>{day}</Text>
-                </View>
+          )}
+          
+          {/* Image indicators */}
+          {productImages.length > 1 && (
+            <View style={styles.imageIndicators}>
+              {productImages.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.indicator,
+                    { backgroundColor: index === currentImageIndex ? '#4F8CFF' : '#E0E0E0' }
+                  ]}
+                />
               ))}
             </View>
+          )}
+        </View>
+
+        <View style={styles.detailsContainer}>
+          <Text style={styles.title}>{product.name}</Text>
+          
+          <View style={styles.priceContainer}>
+            <Text style={styles.price}>R$ {product.price ? product.price.toFixed(2) : '0,00'}</Text>
+            <Text style={styles.priceLabel}>/ dia</Text>
           </View>
-        )}
 
-        <Text style={styles.sectionTitle}>Descrição</Text>
-        <Text style={styles.productDescription}>
-          {product.description || 'Sem descrição disponível.'}
-        </Text>
+          <Text style={styles.location}>
+            {renter?.addresses?.[0] 
+              ? `${renter.addresses[0].neighborhood}, ${renter.addresses[0].city} - ${renter.addresses[0].state}` 
+              : 'Localização não disponível'}
+          </Text>
 
-        <TouchableOpacity
-          style={styles.bookButton}
-          onPress={() => navigation.navigate('SelectDate', { product, renter })}
-        >
-          <Text style={styles.bookButtonText}>Alugar Agora</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <View style={styles.ratingContainer}>
+            <FontAwesome name="star" size={14} color="#FFD700" />
+            <Text style={styles.ratingText}>4.7</Text>
+            <Text style={styles.reviewCount}>(64 avaliações)</Text>
+          </View>
+
+          {/* Seller Info */}
+          {renter && (
+            <View style={styles.sellerContainer}>
+              <Image
+                source={{ uri: 'https://i.pravatar.cc/150?img=8' }}
+                style={styles.sellerImage}
+              />
+              <View style={styles.sellerInfo}>
+                <Text style={styles.sellerName}>{renter.first_name} {renter.last_name}</Text>
+                <Text style={styles.verifiedText}>Conta verificada</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Availability */}
+          {product.availabilities && product.availabilities.length > 0 && (
+            <View style={styles.availabilityContainer}>
+              <Text style={styles.sectionTitle}>Disponibilidade</Text>
+              <View style={styles.availabilityTags}>
+                {product.availabilities.map((day, index) => (
+                  <View key={index} style={styles.availabilityTag}>
+                    <Text style={styles.availabilityText}>{day}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          <Text style={styles.sectionTitle}>Descrição</Text>
+          <Text style={styles.productDescription}>
+            {product.description || 'Sem descrição disponível.'}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.bookButton}
+            onPress={() => navigation.navigate('SelectDate', { product, renter })}
+          >
+            <Text style={styles.bookButtonText}>Alugar Agora</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -179,6 +181,9 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#F7F8FA' 
+  },
+  scrollContent: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -217,7 +222,7 @@ const styles = StyleSheet.create({
   },
   header: {
     position: 'absolute',
-    top: 40,
+    top: 10,
     left: 0,
     right: 0,
     flexDirection: 'row',

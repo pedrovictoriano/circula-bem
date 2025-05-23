@@ -15,7 +15,6 @@ const NotificationsScreen = () => {
 
   const handlePressNotification = (id) => {
     // Aqui você pode adicionar ações como navegar para uma tela detalhada
-    console.log('Pressed notification:', id);
   };
 
   return (

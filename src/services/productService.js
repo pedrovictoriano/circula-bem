@@ -6,6 +6,9 @@ export const createProduct = async (productData) => {
   try {
     const token = await AsyncStorage.getItem('token');
     
+    console.log('Criando produto com dados:', productData);
+    console.log('Token usado:', token ? 'Token presente' : 'Usando apikey');
+    
     const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/products`, {
       method: 'POST',
       headers: {
@@ -17,8 +20,20 @@ export const createProduct = async (productData) => {
       body: JSON.stringify(productData)
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     if (!response.ok) {
-      throw new Error(`Erro HTTP! status: ${response.status}`);
+      const errorText = await response.text();
+      console.log('Erro detalhado do servidor:', errorText);
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        console.log('Erro JSON parseado:', errorData);
+        throw new Error(`Erro HTTP ${response.status}: ${errorData.message || errorData.details || errorText}`);
+      } catch (parseError) {
+        throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+      }
     }
 
     const data = await response.json();
@@ -27,6 +42,7 @@ export const createProduct = async (productData) => {
       throw new Error('Nenhum dado recebido do Supabase');
     }
 
+    console.log('Produto criado com sucesso:', data);
     return data[0]; // Retorna o primeiro item do array
   } catch (error) {
     console.error('Erro ao criar produto:', error);

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image, Keyboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
@@ -144,7 +144,9 @@ const SignUpScreen = () => {
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
           <View style={styles.container}>
-            <Text style={styles.title}>Inscrição</Text>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.title}>Criar Conta</Text>
+            <Text style={styles.subtitle}>Preencha os dados para se cadastrar</Text>
             {[
               ['Nome', 'name'], 
               ['Sobrenome', 'surName'], 
@@ -214,19 +216,32 @@ const SignUpScreen = () => {
 const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F8FA',
   },
   container: { 
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F8FA',
     paddingTop: 40,
     paddingBottom: 40,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    alignSelf: 'center',
+    marginBottom: 30,
   },
   title: { 
     fontSize: 28, 
     fontWeight: 'bold', 
     textAlign: 'center', 
-    marginBottom: 30 
+    marginBottom: 8,
+    color: '#222'
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666'
   },
   inputContainer: {
     marginBottom: 15,
@@ -234,24 +249,35 @@ const styles = StyleSheet.create({
   },
   input: { 
     borderWidth: 1, 
-    borderColor: '#ccc', 
-    borderRadius: 8, 
-    padding: 12,
-    backgroundColor: '#fff',
+    borderColor: '#E0E0E0', 
+    borderRadius: 12, 
+    padding: 16,
+    backgroundColor: '#FFFFFF',
     fontSize: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   error: { 
-    color: 'red', 
+    color: '#FF6B6B', 
     fontSize: 12, 
     marginTop: 4,
     marginBottom: 4,
+    marginLeft: 4
   },
   button: { 
-    backgroundColor: '#233ED9', 
-    padding: 15, 
-    borderRadius: 8, 
+    backgroundColor: '#4F8CFF', 
+    padding: 16, 
+    borderRadius: 12, 
     alignItems: 'center', 
-    marginVertical: 20 
+    marginVertical: 20,
+    shadowColor: '#4F8CFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonText: { 
     color: '#fff', 
@@ -259,15 +285,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   link: { 
-    color: '#233ED9', 
+    color: '#666', 
     textAlign: 'center', 
     marginTop: 10,
     fontSize: 16,
   },
   loadingIndicator: {
     position: 'absolute',
-    right: 10,
-    top: 12,
+    right: 15,
+    top: 16,
   }
 });
 

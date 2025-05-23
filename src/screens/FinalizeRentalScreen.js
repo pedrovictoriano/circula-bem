@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, SafeAreaView, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createMultipleRentals } from '../services/api';
 
@@ -12,8 +12,6 @@ const FinalizeRentalScreen = ({ route }) => {
   const [showRentButton, setShowRentButton] = useState(true);
   const [showAllDates, setShowAllDates] = useState(false);
 
-  console.log('FinalizeRental params:', { startDate, endDate, selectedDates, product, renter });
-
   const handleRent = async () => {
     if (!renter || !product) {
       alert('Erro: Dados do usuário ou produto não encontrados.');
@@ -24,8 +22,6 @@ const FinalizeRentalScreen = ({ route }) => {
       alert('Erro: Nenhuma data selecionada.');
       return;
     }
-
-    console.log('Creating rentals for dates:', selectedDates);
 
     try {
       // Criar um aluguel para cada data selecionada
@@ -93,82 +89,90 @@ const FinalizeRentalScreen = ({ route }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.stepText}>Etapa 2 de 2</Text>
-      {/* Barra de progresso */}
-      <View style={styles.progressBar}>
-        <View style={styles.progressStepCompleted} />
-      </View>
-
-      <Text style={styles.detailsTitle}>Item de Aluguel</Text>
-      {/* Card do item */}
-      {product && (
-        <View style={styles.itemCard}>
-          <Image source={{ uri: getProductImage() }} style={styles.itemImage} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.itemTitle} numberOfLines={2} ellipsizeMode="tail">
-              {product.name || 'Produto sem nome'}
-            </Text>
-            <Text style={styles.itemPrice}>
-              R$ {product.price ? product.price.toFixed(2) : '0,00'} / dia
-            </Text>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContainer}>
+        {/* Header com indicação de etapa */}
+        <View style={styles.header}>
+          <Text style={styles.stepText}>Etapa 2 de 2</Text>
+          {/* Barra de progresso */}
+          <View style={styles.progressBar}>
+            <View style={styles.progressStepCompleted} />
           </View>
         </View>
-      )}
 
-      {/* Detalhes do aluguel */}
-      <View style={styles.detailsContainer}>
-        <Text style={styles.detailsTitle}>Detalhes do Aluguel</Text>
-        {renderDateSection()}
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Total de dias:</Text>
-          <Text style={styles.detailValue}>{selectedDates.length}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Valor total:</Text>
-          <Text style={styles.detailValue}>
-            R$ {product?.price ? (product.price * selectedDates.length).toFixed(2) : '0,00'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Informações do locador */}
-      {showRenterInfo && renter && (
-        <View style={styles.renterInfoContainer}>
-          <Text style={styles.renterInfoTitle}>Informações do locador</Text>
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Nome:</Text>
-            <Text style={styles.detailValue}>
-              {renter.first_name && renter.last_name 
-                ? `${renter.first_name} ${renter.last_name}` 
-                : 'Nome não disponível'}
-            </Text>
-          </View>
-          {renter.addresses && renter.addresses.length > 0 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Endereço:</Text>
-              <Text style={styles.detailValue}>
-                {`${renter.addresses[0].neighborhood || ''}, ${renter.addresses[0].city || ''} - ${renter.addresses[0].state || ''}`}
+        <Text style={styles.detailsTitle}>Item de Aluguel</Text>
+        {/* Card do item */}
+        {product && (
+          <View style={styles.itemCard}>
+            <Image source={{ uri: getProductImage() }} style={styles.itemImage} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.itemTitle} numberOfLines={2} ellipsizeMode="tail">
+                {product.name || 'Produto sem nome'}
+              </Text>
+              <Text style={styles.itemPrice}>
+                R$ {product.price ? product.price.toFixed(2) : '0,00'} / dia
               </Text>
             </View>
-          )}
+          </View>
+        )}
+
+        {/* Detalhes do aluguel */}
+        <View style={styles.detailsContainer}>
+          <Text style={styles.detailsTitle}>Detalhes do Aluguel</Text>
+          {renderDateSection()}
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Contato:</Text>
-            <Text style={styles.detailValue}>Disponível após confirmação</Text>
+            <Text style={styles.detailLabel}>Total de dias:</Text>
+            <Text style={styles.detailValue}>{selectedDates.length}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Valor total:</Text>
+            <Text style={styles.detailValue}>
+              R$ {product?.price ? (product.price * selectedDates.length).toFixed(2) : '0,00'}
+            </Text>
           </View>
         </View>
-      )}
 
-      {showRentButton ? (
-        <TouchableOpacity style={styles.rentButton} onPress={handleRent}>
-          <Text style={styles.rentButtonText}>Confirmar Aluguel</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.goHomeButton} onPress={handleGoHome}>
-          <Text style={styles.goHomeButtonText}>Voltar ao Início</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        {/* Informações do locador */}
+        {showRenterInfo && renter && (
+          <View style={styles.renterInfoContainer}>
+            <Text style={styles.renterInfoTitle}>Informações do locador</Text>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Nome:</Text>
+              <Text style={styles.detailValue}>
+                {renter.first_name && renter.last_name 
+                  ? `${renter.first_name} ${renter.last_name}` 
+                  : 'Nome não disponível'}
+              </Text>
+            </View>
+            {renter.addresses && renter.addresses.length > 0 && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Endereço:</Text>
+                <Text style={styles.detailValue}>
+                  {`${renter.addresses[0].neighborhood || ''}, ${renter.addresses[0].city || ''} - ${renter.addresses[0].state || ''}`}
+                </Text>
+              </View>
+            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Contato:</Text>
+              <Text style={styles.detailValue}>Disponível após confirmação</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Botões */}
+        <View style={styles.buttonContainer}>
+          {showRentButton ? (
+            <TouchableOpacity style={styles.rentButton} onPress={handleRent}>
+              <Text style={styles.rentButtonText}>Confirmar Aluguel</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.goHomeButton} onPress={handleGoHome}>
+              <Text style={styles.goHomeButtonText}>Voltar ao Início</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -176,25 +180,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F7F8FA',
-    padding: 20,
   },
-  progressBar: {
-    flexDirection: 'row',
-    height: 10,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 5,
-    marginBottom: 20,
-  },
-  progressStepCompleted: {
+  scrollContent: {
     flex: 1,
-    backgroundColor: '#4F8CFF',
-    borderRadius: 5,
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 30,
+  },
+  header: {
+    marginBottom: 25,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   stepText: {
     fontSize: 16,
     color: '#4F8CFF',
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  progressBar: {
+    flexDirection: 'row',
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+  },
+  progressStepCompleted: {
+    flex: 1,
+    backgroundColor: '#4F8CFF',
+    borderRadius: 4,
+  },
+  detailsTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#222',
   },
   itemCard: {
     flexDirection: 'row',
@@ -221,6 +249,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#222',
     marginBottom: 4,
+    lineHeight: 22,
   },
   itemPrice: {
     fontSize: 14,
@@ -238,12 +267,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  detailsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#222',
-  },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -252,18 +275,20 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   detailLabel: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#666',
     flex: 2,
     marginRight: 10,
+    lineHeight: 20,
   },
   detailValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#222',
     flex: 3,
     textAlign: 'right',
     flexWrap: 'wrap',
+    lineHeight: 20,
   },
   renterInfoContainer: {
     marginBottom: 20,
@@ -281,6 +306,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 15,
     color: '#222',
+  },
+  buttonContainer: {
+    marginTop: 10,
   },
   rentButton: {
     backgroundColor: '#4F8CFF',
