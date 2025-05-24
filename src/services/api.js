@@ -20,11 +20,10 @@ export const fetchUserById = async (userId) => {
 };
 
 export const fetchRentedDates = async (productId, startDate, endDate) => {
-  // Query to find rents that have dates within the given range
-  const filter = `product_id=eq.${productId}&date=gte.${startDate}&date=lte.${endDate}`;
-  console.log('Fetching rented dates with filter:', filter);
+  // Usar a nova função do rentService
+  const { fetchRentedDatesForProduct } = require('./rentService');
   try {
-    const result = await getTable('rents', filter);
+    const result = await fetchRentedDatesForProduct(productId, startDate, endDate);
     console.log('Rented dates result:', result);
     return result || [];
   } catch (error) {
@@ -37,26 +36,47 @@ export const createRental = async (rentalData) => {
   return await insertIntoTable('rents', rentalData);
 };
 
-export const createMultipleRentals = async (productId, userId, selectedDates) => {
+// Função atualizada para criar um único aluguel com múltiplas datas
+export const createSingleRentalWithDates = async (productId, userId, selectedDates, productPrice) => {
   try {
-    console.log('Creating multiple rentals for:', { productId, userId, selectedDates });
+    console.log('Creating single rental with multiple dates:', { productId, userId, selectedDates });
     
-    const rentalPromises = selectedDates.map(date => {
-      const rentalData = {
-        id: uuidv4(),
-        product_id: productId,
-        user_id: userId,
-        date: `${date}T00:00:00.000Z` // Meio-dia para evitar problemas de timezone
-      };
-      console.log('Creating rental for date:', rentalData);
-      return insertIntoTable('rents', rentalData);
-    });
+    // Calcular o valor total (em centavos para evitar problemas de ponto flutuante)
+    const totalAmount = Math.round(productPrice * selectedDates.length * 100);
     
-    const results = await Promise.all(rentalPromises);
-    console.log('Multiple rentals created successfully:', results);
-    return results;
+    const rentalData = {
+      id: uuidv4(),
+      product_id: productId,
+      user_id: userId,
+      dates: selectedDates, // Array de datas
+      status: 'pendente', // Status inicial
+      total_amount: totalAmount // Valor em centavos
+    };
+    
+    console.log('Creating rental with data:', rentalData);
+    const result = await insertIntoTable('rents', rentalData);
+    console.log('Rental created successfully:', result);
+    return result;
   } catch (error) {
-    console.error('Error creating multiple rentals:', error);
+    console.error('Error creating rental:', error);
+    throw error;
+  }
+};
+
+// Manter compatibilidade com função antiga (deprecated)
+export const createMultipleRentals = async (productId, userId, selectedDates, productPrice = 0) => {
+  console.warn('createMultipleRentals is deprecated. Use createSingleRentalWithDates instead.');
+  return await createSingleRentalWithDates(productId, userId, selectedDates, productPrice);
+};
+
+// Função para atualizar status de um aluguel
+export const updateRentalStatus = async (rentalId, newStatus) => {
+  try {
+    const result = await updateTableById('rents', rentalId, { status: newStatus });
+    console.log('Rental status updated:', result);
+    return result;
+  } catch (error) {
+    console.error('Error updating rental status:', error);
     throw error;
   }
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { fetchRentedDates } from '../services/api';
+import { fetchRentedDatesForProduct } from '../services/rentService';
 
 const SelectDateScreen = () => {
   const [selectedDates, setSelectedDates] = useState([]);
@@ -75,13 +75,12 @@ const SelectDateScreen = () => {
     const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
     try {
-      const rentedDates = await fetchRentedDates(product.id, startDate, endDate);
+      const rentedDates = await fetchRentedDatesForProduct(product.id, startDate, endDate);
       
-      // Agora cada rentedDate é um objeto com uma única 'date'
+      // Processar as datas alugadas
       rentedDates.forEach(rent => {
-        const rentDate = new Date(rent.date);
-        const rentedDateString = rentDate.toISOString().split('T')[0];
-        console.log(rentedDateString);
+        const rentedDateString = rent.date;
+        console.log('Data alugada encontrada:', rentedDateString);
         if (availableDays[rentedDateString]) {
           availableDays[rentedDateString] = {
             disabled: true,

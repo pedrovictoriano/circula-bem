@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, SafeAreaView, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { createMultipleRentals } from '../services/api';
+import { createSingleRentalWithDates } from '../services/api';
 
 const FinalizeRentalScreen = ({ route }) => {
   const { startDate, endDate, selectedDates, product, renter } = route.params;
@@ -24,8 +24,14 @@ const FinalizeRentalScreen = ({ route }) => {
     }
 
     try {
-      // Criar um aluguel para cada data selecionada
-      await createMultipleRentals(product.id, renter.user_id, selectedDates);
+      // Criar um único aluguel com múltiplas datas
+      await createSingleRentalWithDates(
+        product.id, 
+        renter.user_id, 
+        selectedDates,
+        product.price || 0
+      );
+      
       setShowRenterInfo(true);
       setShowRentButton(false);
       alert(`Aluguel confirmado para ${selectedDates.length} ${selectedDates.length === 1 ? 'dia' : 'dias'}!`);

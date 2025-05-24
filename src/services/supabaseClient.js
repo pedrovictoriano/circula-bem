@@ -4,16 +4,48 @@ const SUPABASE_URL = 'https://gcwjfkswymioiwhuaiku.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjd2pma3N3eW1pb2l3aHVhaWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5Mjc1OTUsImV4cCI6MjA2MDUwMzU5NX0.h8ciNTFQpAoHB0Tik8ktUDvpJR-FzsWFGrQo1uN3MFQ'; // Substitua pela sua chave ou use dotenv
 
 export async function getTable(table, filters = '') {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${SUPABASE_URL}/rest/v1/${table}?${filters}`;
+    
+    console.log(`🔍 getTable: Buscando dados de "${table}" com filtros: "${filters}"`);
+    console.log(`📡 URL da requisição: ${url}`);
 
-  const token = await AsyncStorage.getItem('token');
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${token || SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${filters}`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${token || SUPABASE_KEY}`,
-    },
-  });
-  return response.json();
+    console.log(`📡 Status da resposta: ${response.status} ${response.statusText}`);
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`❌ Erro na requisição para ${table}:`, errorBody);
+      throw new Error(`Erro ao buscar dados da tabela "${table}": ${response.status} ${response.statusText} - ${errorBody}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ Dados recebidos de "${table}":`, data);
+
+    // Garantir que sempre retornamos um array
+    if (!data) {
+      console.log(`⚠️ Dados nulos recebidos de "${table}", retornando array vazio`);
+      return [];
+    }
+
+    if (!Array.isArray(data)) {
+      console.log(`⚠️ Dados não são array para "${table}":`, typeof data, data);
+      return [];
+    }
+
+    return data;
+  } catch (error) {
+    console.error(`❌ Erro em getTable para "${table}":`, error);
+    throw error;
+  }
 }
 
 export async function insertIntoTable(table, data) {

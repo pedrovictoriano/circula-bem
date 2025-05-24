@@ -13,13 +13,15 @@ create table public.user_extra_information (
 ) TABLESPACE pg_default;
 
 create table public.rents (
-  product_id uuid not null,
-  date timestamp without time zone not null,
-  id uuid not null,
-  user_id uuid null default auth.uid (),
-  constraint rents_pkey primary key (product_id, date),
-  constraint FK_rent_product_productid foreign KEY (product_id) references products (id) on delete CASCADE,
-  constraint rent_user_id_fkey foreign KEY (user_id) references auth.users (id) on update CASCADE on delete CASCADE
+  id uuid not null default gen_random_uuid (),
+  product_id uuid null,
+  user_id uuid null,
+  status public.rent_status null,
+  total_amount integer null,
+  dates date[] null,
+  constraint rents_pkey primary key (id),
+  constraint rents_product_id_fkey foreign KEY (product_id) references products (id) on update RESTRICT on delete CASCADE,
+  constraint rents_user_id_fkey foreign KEY (user_id) references auth.users (id) on update RESTRICT on delete CASCADE
 ) TABLESPACE pg_default;
 
 create index IF not exists "IX_rent_productid" on public.rents using btree (product_id) TABLESPACE pg_default;
@@ -115,6 +117,14 @@ create type public.group_member_role as enum (
 create type public.group_member_status as enum (
   'pendente',
   'ativo'
+);
+
+create type public.rent_status as enum (
+  'pendente',
+  'confirmado',
+  'em andamento',
+  'cancelado',
+  'concluído'
 );
 
 
