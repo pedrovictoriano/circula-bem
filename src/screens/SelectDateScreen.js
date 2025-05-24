@@ -81,7 +81,7 @@ const SelectDateScreen = () => {
       rentedDates.forEach(rent => {
         const rentDate = new Date(rent.date);
         const rentedDateString = rentDate.toISOString().split('T')[0];
-        
+        console.log(rentedDateString);
         if (availableDays[rentedDateString]) {
           availableDays[rentedDateString] = {
             disabled: true,

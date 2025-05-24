@@ -46,7 +46,7 @@ export const createMultipleRentals = async (productId, userId, selectedDates) =>
         id: uuidv4(),
         product_id: productId,
         user_id: userId,
-        date: `${date}T12:00:00.000Z` // Meio-dia para evitar problemas de timezone
+        date: `${date}T00:00:00.000Z` // Meio-dia para evitar problemas de timezone
       };
       console.log('Creating rental for date:', rentalData);
       return insertIntoTable('rents', rentalData);
