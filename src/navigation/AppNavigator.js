@@ -13,6 +13,9 @@ import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CreateProduct from '../screens/CreateProduct';
 import CreateGroup from '../screens/CreateGroup';
+import MyRentsScreen from '../screens/MyRentsScreen';
+import GroupsScreen from '../screens/GroupsScreen';
+import AccountScreen from '../screens/AccountScreen';
 
 const Stack = createStackNavigator();
 
@@ -36,6 +39,9 @@ const AppNavigator = () => {
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ title: 'Perfil' }} />
       <Stack.Screen name="CreateProduct" component={CreateProduct} />
       <Stack.Screen name="CreateGroup" component={CreateGroup} options={{ title: 'Criar Grupo' }} />
+      <Stack.Screen name="MyRents" component={MyRentsScreen} options={{ title: 'Meus Aluguéis' }} />
+      <Stack.Screen name="Groups" component={GroupsScreen} options={{ title: 'Meus Grupos' }} />
+      <Stack.Screen name="Account" component={AccountScreen} options={{ title: 'Minha Conta' }} />
     </Stack.Navigator>
   );
 };

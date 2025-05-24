@@ -7,8 +7,8 @@ const NAV_ITEMS = [
   { key: 'Home', icon: 'home-outline', label: 'Home' },
   { key: 'MyRents', icon: 'clipboard-list-outline', label: 'Aluguéis' },
   { key: 'Add', icon: 'plus', label: '' },
-  { key: 'Reports', icon: 'file-chart-outline', label: 'Relatórios' },
-  { key: 'Settings', icon: 'cog-outline', label: 'Configs.' },
+  { key: 'Groups', icon: 'account-group-outline', label: 'Grupos' },
+  { key: 'Account', icon: 'account-outline', label: 'Conta' },
 ];
 
 const BottomNavigationBar = () => {
