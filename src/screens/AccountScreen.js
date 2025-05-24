@@ -11,7 +11,6 @@ import {
   Switch,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import BottomNavigationBar from './BottomNavigationBar';
 
 const AccountScreen = () => {
   const [notifications, setNotifications] = useState(true);
@@ -185,7 +184,6 @@ const AccountScreen = () => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <BottomNavigationBar />
     </SafeAreaView>
   );
 };

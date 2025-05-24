@@ -3,7 +3,6 @@ import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, D
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import BottomNavigationBar from '../screens/BottomNavigationBar';
 import { fetchCategories } from '../services/categoryService';
 import { fetchProducts } from '../services/productService';
 
@@ -166,7 +165,6 @@ const HomeScreen = () => {
         refreshing={refreshing}
         onRefresh={onRefresh}
       />
-      <BottomNavigationBar />
     </SafeAreaView>
   );
 };
@@ -323,7 +321,7 @@ const styles = StyleSheet.create({
   },
   productsGrid: {
     paddingHorizontal: 10,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   productCard: {
     backgroundColor: '#fff',

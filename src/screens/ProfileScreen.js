@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIn
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchUserById } from '../services/api';
-import BottomNavigationBar from './BottomNavigationBar';
 
 const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
@@ -93,7 +92,6 @@ const ProfileScreen = () => {
         </TouchableOpacity>
       </ScrollView>
 
-      <BottomNavigationBar />
     </SafeAreaView>
   );
 };

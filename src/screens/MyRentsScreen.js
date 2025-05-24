@@ -11,7 +11,6 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import BottomNavigationBar from './BottomNavigationBar';
 
 const MyRentsScreen = () => {
   const [rents, setRents] = useState([]);
@@ -181,7 +180,6 @@ const MyRentsScreen = () => {
         showsVerticalScrollIndicator={false}
       />
 
-      <BottomNavigationBar />
     </SafeAreaView>
   );
 };

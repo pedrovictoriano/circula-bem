@@ -116,3 +116,6 @@ create type public.group_member_status as enum (
   'pendente',
   'ativo'
 );
+
+
+# USE ZUSTAND WHEN USING GLOBAL STATE.
