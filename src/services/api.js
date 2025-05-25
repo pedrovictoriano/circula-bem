@@ -4,12 +4,13 @@ import {
   updateTableById,
   deleteFromTableById
 } from './supabaseClient';
+import { SUPABASE_CONFIG } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 
-const SUPABASE_URL = 'https://gcwjfkswymioiwhuaiku.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjd2pma3N3eW1pb2l3aHVhaWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5Mjc1OTUsImV4cCI6MjA2MDUwMzU5NX0.h8ciNTFQpAoHB0Tik8ktUDvpJR-FzsWFGrQo1uN3MFQ';
+const SUPABASE_URL = SUPABASE_CONFIG.URL;
+const SUPABASE_KEY = SUPABASE_CONFIG.KEY;
 
 export const fetchUserById = async (userId) => {
   const result = await getTable('user_extra_information', `user_id=eq.${userId}`);
@@ -81,7 +82,7 @@ export const updateRentalStatus = async (rentalId, newStatus) => {
   }
 };
 
-export const registerUser = async ({ email, pwd, name, surName, regNum, address }) => {
+export const registerUser = async ({ email, pwd, name, surName, regNum, address, imageUrl = null }) => {
   const userData = {
     email,
     password: pwd
@@ -106,7 +107,9 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
     first_name: name,
     last_name: surName,
     registration_number: regNum,
-  });
+    image_url: imageUrl
+  },
+  false);
 
 	await insertIntoTable('addresses', {
     user_id: userId,
@@ -117,7 +120,8 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
     street: address.street,
     number: address.number,
     complement: address.complement
-  });
+  },
+  false);
 
   return { userId };
 };

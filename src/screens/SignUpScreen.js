@@ -3,7 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { useNavigation } from '@react-navigation/native';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { registerUser, fetchAddressByCEP } from '../services/api';
+import { uploadProfileImage } from '../services/profileService';
+import { SUPABASE_CONFIG } from '../config/env';
 import KeyboardDismissView from '../components/KeyboardDismissView';
 import LoadingOverlay from '../components/LoadingOverlay';
 import { useLoading } from '../hooks/useLoading';
@@ -40,6 +45,7 @@ const schema = Yup.object().shape({
 const SignUpScreen = () => {
   const navigation = useNavigation();
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
+  const [profileImageUri, setProfileImageUri] = useState(null);
   const { isLoading, loadingMessage, withLoading } = useLoading();
   
   // Create refs for all inputs
@@ -92,6 +98,34 @@ const SignUpScreen = () => {
     }
   };
 
+  const pickProfileImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Erro', 'Precisamos de permissão para acessar suas fotos');
+      return;
+    }
+    
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 400 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+      );
+      setProfileImageUri(manipulated.uri);
+    }
+  };
+
+  const removeProfileImage = () => {
+    setProfileImageUri(null);
+  };
+
   return (
     <KeyboardDismissView contentContainerStyle={styles.scrollContainer}>
       <Formik
@@ -110,17 +144,59 @@ const SignUpScreen = () => {
           };
 
           try {
-            await withLoading(
-              registerUser({
-                email: values.email,
-                pwd: values.pwd,
-                name: values.name,
-                surName: values.surName,
-                regNum: values.regNum.replace(/\D/g, ''),
-                address
-              }),
-              'Criando sua conta...'
-            );
+            let imageUrl = null;
+            
+            // Se tem imagem de perfil, criar usuário e fazer upload
+            if (profileImageUri) {
+              // Primeiro criar o usuário para obter o ID
+              const { userId } = await withLoading(
+                registerUser({
+                  email: values.email,
+                  pwd: values.pwd,
+                  name: values.name,
+                  surName: values.surName,
+                  regNum: values.regNum.replace(/\D/g, ''),
+                  address,
+                  imageUrl: null // Primeiro sem imagem
+                }),
+                'Criando sua conta...'
+              );
+              
+              // Depois fazer upload da imagem usando o userId
+              imageUrl = await withLoading(
+                uploadProfileImage(userId, profileImageUri),
+                'Fazendo upload da foto de perfil...'
+              );
+              
+              // Atualizar o perfil com a URL da imagem
+              await withLoading(
+                fetch(`${SUPABASE_CONFIG.URL}/rest/v1/user_extra_information?user_id=eq.${userId}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'apikey': SUPABASE_CONFIG.KEY,
+                    'Authorization': `Bearer ${SUPABASE_CONFIG.KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ image_url: imageUrl })
+                }),
+                'Atualizando perfil...'
+              );
+            } else {
+              // Se não tem imagem, registrar normalmente
+              await withLoading(
+                registerUser({
+                  email: values.email,
+                  pwd: values.pwd,
+                  name: values.name,
+                  surName: values.surName,
+                  regNum: values.regNum.replace(/\D/g, ''),
+                  address,
+                  imageUrl: null
+                }),
+                'Criando sua conta...'
+              );
+            }
+            
             Alert.alert('Sucesso', 'Usuário cadastrado com sucesso!');
             navigation.navigate('Login');
           } catch (err) {
@@ -147,6 +223,27 @@ const SignUpScreen = () => {
             <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>Criar Conta</Text>
             <Text style={styles.subtitle}>Preencha os dados para se cadastrar</Text>
+            
+            {/* Profile Image Section */}
+            <View style={styles.profileImageSection}>
+              <Text style={styles.profileImageLabel}>Foto de Perfil (Opcional)</Text>
+              <View style={styles.profileImageContainer}>
+                {profileImageUri ? (
+                  <View style={styles.profileImageWrapper}>
+                    <Image source={{ uri: profileImageUri }} style={styles.profileImage} />
+                    <TouchableOpacity style={styles.removeImageBtn} onPress={removeProfileImage}>
+                      <MaterialCommunityIcons name="close-circle" size={24} color="#FF6B6B" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.addProfileImageBtn} onPress={pickProfileImage}>
+                    <MaterialCommunityIcons name="camera-plus" size={32} color="#4F8CFF" />
+                    <Text style={styles.addProfileImageText}>Adicionar Foto</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+            
             {[
               ['Nome', 'name'], 
               ['Sobrenome', 'surName'], 
@@ -294,7 +391,58 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 15,
     top: 16,
-  }
+  },
+  profileImageSection: {
+    marginBottom: 20,
+  },
+  profileImageLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 8,
+  },
+  profileImageContainer: {
+    alignItems: 'center',
+  },
+  profileImageWrapper: {
+    position: 'relative',
+  },
+  profileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F7F8FA',
+  },
+  removeImageBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addProfileImageBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F7F8FA',
+    borderWidth: 2,
+    borderColor: '#4F8CFF',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addProfileImageText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#4F8CFF',
+    marginTop: 4,
+    textAlign: 'center',
+  },
 });
 
 export default SignUpScreen;

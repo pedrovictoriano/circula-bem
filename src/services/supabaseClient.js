@@ -48,18 +48,22 @@ export async function getTable(table, filters = '') {
   }
 }
 
-export async function insertIntoTable(table, data) {
+export async function insertIntoTable(table, data, useAuthroization = true) {
   try {
     const token = await AsyncStorage.getItem('token');
-    
+    const headers = {
+      apikey: SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    };
+
+    if (useAuthroization) {
+      headers.Authorization = `Bearer ${token || SUPABASE_KEY}`;
+    }
+
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
       method: 'POST',
-      headers: {
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${token || SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=representation',
-      },
+      headers,
       body: JSON.stringify(data),
     });
 
