@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, ActivityIndicator, Dim
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchProductById } from '../services/productService';
 import { fetchUserById } from '../services/api';
+import ProfileImage from '../components/ProfileImage';
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
@@ -135,9 +136,10 @@ const ProductDetailScreen = ({ route, navigation }) => {
           {/* Seller Info */}
           {renter && (
             <View style={styles.sellerContainer}>
-              <Image
-                source={{ uri: 'https://i.pravatar.cc/150?img=8' }}
-                style={styles.sellerImage}
+              <ProfileImage
+                imageUrl={renter.image_url}
+                size={50}
+                borderWidth={0}
               />
               <View style={styles.sellerInfo}>
                 <Text style={styles.sellerName}>{renter.first_name} {renter.last_name}</Text>

@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { fetchCategories } from '../services/categoryService';
 import { fetchProducts } from '../services/productService';
+import { fetchUserById } from '../services/api';
+import ProfileImage from '../components/ProfileImage';
 
 const INFO_CARDS = [
   { icon: 'clock-outline', label: 'Ativos', value: 5 },
@@ -15,7 +17,7 @@ const INFO_CARDS = [
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [userName, setUserName] = useState('');
-  const [profilePic, setProfilePic] = useState('https://i.pravatar.cc/150?img=12');
+  const [userData, setUserData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,6 +28,15 @@ const HomeScreen = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      
+      // Buscar dados do usuário
+      const userId = await AsyncStorage.getItem('userId');
+      if (userId) {
+        const user = await fetchUserById(userId);
+        setUserData(user);
+        setUserName(user ? `${user.first_name} ${user.last_name}` : '');
+      }
+      
       const cats = await fetchCategories();
       setCategories(cats);
       const prods = await fetchProducts();
@@ -54,7 +65,12 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
-          <Image source={{ uri: profilePic }} style={styles.profilePic} />
+          <ProfileImage
+            imageUrl={userData?.image_url}
+            size={40}
+            borderWidth={2}
+            borderColor="#fff"
+          />
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
@@ -191,14 +207,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 32,
     marginRight: 12,
-  },
-  profilePic: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#fff',
-    backgroundColor: '#eee',
   },
   headerRight: {
     flexDirection: 'row',

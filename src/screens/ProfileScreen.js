@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIn
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchUserById } from '../services/api';
+import ProfileImage from '../components/ProfileImage';
 
 const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
@@ -63,9 +64,11 @@ const ProfileScreen = () => {
       
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.profileContainer}>
-          <Image
-            source={{ uri: 'https://i.pravatar.cc/150?img=12' }}
-            style={styles.profileImage}
+          <ProfileImage
+            imageUrl={userData.image_url}
+            size={100}
+            borderWidth={3}
+            borderColor="#4F8CFF"
           />
           <Text style={styles.name}>{userData.first_name} {userData.last_name}</Text>
           <Text style={styles.email}>{userData.email}</Text>

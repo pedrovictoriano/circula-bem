@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,27 +9,39 @@ import {
   SafeAreaView,
   ScrollView,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchUserById } from '../services/api';
+import ProfileImage from '../components/ProfileImage';
 
 const AccountScreen = () => {
   const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationSharing, setLocationSharing] = useState(true);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock user data - aqui você pode integrar com Supabase
-  const userData = {
-    name: 'João Silva',
-    email: 'joao.silva@email.com',
-    registrationNumber: '12345678',
-    avatar: 'https://via.placeholder.com/80x80',
-    memberSince: '2023',
-    totalRents: 23,
-    productsShared: 8,
-    groupsCount: 3,
-  };
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const userId = await AsyncStorage.getItem('userId');
+        if (userId) {
+          const user = await fetchUserById(userId);
+          setUserData(user);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do usuário:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserData();
+  }, []);
 
   // Funções de navegação para os cards de estatísticas
   const handleRentsPress = () => {
@@ -147,67 +159,81 @@ const AccountScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Minha Conta</Text>
-          <TouchableOpacity style={styles.settingsButton}>
-            <MaterialCommunityIcons name="cog-outline" size={24} color="#6B7280" />
-          </TouchableOpacity>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.loadingText}>Carregando perfil...</Text>
         </View>
-
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <Image source={{ uri: userData.avatar }} style={styles.avatar} />
-          <View style={styles.profileInfo}>
-            <Text style={styles.userName}>{userData.name}</Text>
-            <Text style={styles.userEmail}>{userData.email}</Text>
-            <Text style={styles.memberSince}>Membro desde {userData.memberSince}</Text>
+      ) : (
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Minha Conta</Text>
+            <TouchableOpacity style={styles.settingsButton}>
+              <MaterialCommunityIcons name="cog-outline" size={24} color="#6B7280" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <MaterialCommunityIcons name="pencil" size={20} color="#2563EB" />
-          </TouchableOpacity>
-        </View>
 
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <TouchableOpacity style={styles.statCard} onPress={handleRentsPress}>
-            <MaterialCommunityIcons name="clipboard-list" size={24} color="#2563EB" style={styles.statIcon} />
-            <Text style={styles.statNumber}>{userData.totalRents}</Text>
-            <Text style={styles.statLabel}>Aluguéis</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard} onPress={handleProductsPress}>
-            <MaterialCommunityIcons name="package-variant" size={24} color="#2563EB" style={styles.statIcon} />
-            <Text style={styles.statNumber}>{userData.productsShared}</Text>
-            <Text style={styles.statLabel}>Produtos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard} onPress={handleGroupsPress}>
-            <MaterialCommunityIcons name="account-group" size={24} color="#2563EB" style={styles.statIcon} />
-            <Text style={styles.statNumber}>{userData.groupsCount}</Text>
-            <Text style={styles.statLabel}>Grupos</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Menu Sections */}
-        {menuItems.map((section) => (
-          <View key={section.section} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.section}</Text>
-            <View style={styles.sectionContent}>
-              {section.items.map(renderMenuItem)}
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
+            <ProfileImage
+              imageUrl={userData?.image_url}
+              size={60}
+              borderWidth={0}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={styles.userName}>
+                {userData ? `${userData.first_name} ${userData.last_name}` : 'Carregando...'}
+              </Text>
+              <Text style={styles.userEmail}>{userData?.email || 'Email não disponível'}</Text>
+              <Text style={styles.memberSince}>
+                Membro desde {userData?.created_at ? new Date(userData.created_at).getFullYear() : '2023'}
+              </Text>
             </View>
+            <TouchableOpacity style={styles.editButton}>
+              <MaterialCommunityIcons name="pencil" size={20} color="#2563EB" />
+            </TouchableOpacity>
           </View>
-        ))}
 
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton}>
-          <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
-          <Text style={styles.logoutText}>Sair da Conta</Text>
-        </TouchableOpacity>
+          {/* Stats Cards */}
+          <View style={styles.statsContainer}>
+            <TouchableOpacity style={styles.statCard} onPress={handleRentsPress}>
+              <MaterialCommunityIcons name="clipboard-list" size={24} color="#2563EB" style={styles.statIcon} />
+              <Text style={styles.statNumber}>23</Text>
+              <Text style={styles.statLabel}>Aluguéis</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statCard} onPress={handleProductsPress}>
+              <MaterialCommunityIcons name="package-variant" size={24} color="#2563EB" style={styles.statIcon} />
+              <Text style={styles.statNumber}>8</Text>
+              <Text style={styles.statLabel}>Produtos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statCard} onPress={handleGroupsPress}>
+              <MaterialCommunityIcons name="account-group" size={24} color="#2563EB" style={styles.statIcon} />
+              <Text style={styles.statNumber}>3</Text>
+              <Text style={styles.statLabel}>Grupos</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Footer Space */}
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          {/* Menu Sections */}
+          {menuItems.map((section) => (
+            <View key={section.section} style={styles.section}>
+              <Text style={styles.sectionTitle}>{section.section}</Text>
+              <View style={styles.sectionContent}>
+                {section.items.map(renderMenuItem)}
+              </View>
+            </View>
+          ))}
 
+          {/* Logout Button */}
+          <TouchableOpacity style={styles.logoutButton}>
+            <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
+            <Text style={styles.logoutText}>Sair da Conta</Text>
+          </TouchableOpacity>
+
+          {/* Footer Space */}
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
@@ -374,6 +400,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#EF4444',
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 16,
   },
 });
 
