@@ -12,6 +12,9 @@ import { v4 as uuidv4 } from 'uuid';
 const SUPABASE_URL = SUPABASE_CONFIG.URL;
 const SUPABASE_KEY = SUPABASE_CONFIG.KEY;
 
+// Exportar configuração para compatibilidade
+export { SUPABASE_CONFIG };
+
 export const fetchUserById = async (userId) => {
   const result = await getTable('user_extra_information', `user_id=eq.${userId}`);
 	const addresses = await getTable('addresses', `user_id=eq.${userId}`);

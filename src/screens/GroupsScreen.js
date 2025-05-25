@@ -9,43 +9,26 @@ import {
   RefreshControl,
   StatusBar,
   SafeAreaView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import useGroupStore from '../stores/groupStore';
 
 const GroupsScreen = () => {
-  const [groups, setGroups] = useState([]);
+  const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
-
-  // Mock data - aqui você pode integrar com Supabase
-  const mockGroups = [
-    {
-      id: '1',
-      name: 'Vizinhança Ipanema',
-      description: 'Grupo para compartilhar itens na região de Ipanema',
-      memberCount: 28,
-      image: 'https://via.placeholder.com/60x60',
-      isAdmin: true,
-      lastActivity: '2024-01-15',
-    },
-    {
-      id: '2',
-      name: 'Ferramentas RJ',
-      description: 'Compartilhamento de ferramentas na cidade do Rio de Janeiro',
-      memberCount: 156,
-      image: 'https://via.placeholder.com/60x60',
-      isAdmin: false,
-      lastActivity: '2024-01-14',
-    },
-    {
-      id: '3',
-      name: 'Família Silva',
-      description: 'Grupo familiar para compartilhar itens',
-      memberCount: 8,
-      image: 'https://via.placeholder.com/60x60',
-      isAdmin: true,
-      lastActivity: '2024-01-13',
-    },
-  ];
+  
+  // Zustand store
+  const {
+    groups,
+    loading,
+    error,
+    loadUserGroups,
+    refreshGroups,
+    clearError
+  } = useGroupStore();
 
   useEffect(() => {
     loadGroups();
@@ -53,17 +36,30 @@ const GroupsScreen = () => {
 
   const loadGroups = async () => {
     try {
-      // Aqui você pode integrar com Supabase para buscar os grupos
-      setGroups(mockGroups);
+      await loadUserGroups();
     } catch (error) {
       console.error('Erro ao carregar grupos:', error);
+      // Não mostrar erro se for simplesmente não haver grupos
+      if (!error.message?.includes('Nenhum grupo encontrado')) {
+        Alert.alert('Erro', 'Não foi possível carregar seus grupos');
+      }
     }
   };
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadGroups();
-    setRefreshing(false);
+    try {
+      await refreshGroups();
+      clearError();
+    } catch (error) {
+      console.error('Erro ao atualizar grupos:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleCreateGroup = () => {
+    navigation.navigate('CreateGroup');
   };
 
   const formatMemberCount = (count) => {
@@ -72,20 +68,34 @@ const GroupsScreen = () => {
   };
 
   const formatLastActivity = (date) => {
+    if (!date) return 'recém criado';
+    
     const today = new Date();
     const activityDate = new Date(date);
     const diffTime = Math.abs(today - activityDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
+    if (diffDays === 0) return 'hoje';
     if (diffDays === 1) return 'ontem';
     if (diffDays <= 7) return `${diffDays} dias atrás`;
     return `${Math.floor(diffDays / 7)} semanas atrás`;
   };
 
+  const getGroupImage = (imageUrl) => {
+    if (imageUrl) {
+      return { uri: imageUrl };
+    }
+    // Usar uma imagem placeholder padrão
+    return { uri: 'https://via.placeholder.com/120x120/E5E7EB/9CA3AF?text=Grupo' };
+  };
+
   const renderGroupItem = ({ item }) => (
     <TouchableOpacity style={styles.groupCard}>
       <View style={styles.groupImageContainer}>
-        <Image source={{ uri: item.image }} style={styles.groupImage} />
+        <Image 
+          source={getGroupImage(item.image_url)} 
+          style={styles.groupImage}
+        />
         {item.isAdmin && (
           <View style={styles.adminBadge}>
             <MaterialCommunityIcons name="crown" size={12} color="#FFF" />
@@ -103,7 +113,7 @@ const GroupsScreen = () => {
             {formatMemberCount(item.memberCount)}
           </Text>
           <Text style={styles.lastActivity}>
-            • Ativo {formatLastActivity(item.lastActivity)}
+            • Criado {formatLastActivity(item.created_at)}
           </Text>
         </View>
       </View>
@@ -127,10 +137,17 @@ const GroupsScreen = () => {
       <Text style={styles.emptySubtitle}>
         Você ainda não faz parte de nenhum grupo. Crie um novo grupo ou solicite para participar de grupos existentes.
       </Text>
-      <TouchableOpacity style={styles.createGroupButton}>
+      <TouchableOpacity style={styles.createGroupButton} onPress={handleCreateGroup}>
         <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
         <Text style={styles.createGroupButtonText}>Criar Grupo</Text>
       </TouchableOpacity>
+    </View>
+  );
+
+  const renderLoadingState = () => (
+    <View style={styles.loadingState}>
+      <ActivityIndicator size="large" color="#2563EB" />
+      <Text style={styles.loadingText}>Carregando grupos...</Text>
     </View>
   );
 
@@ -145,47 +162,52 @@ const GroupsScreen = () => {
           <TouchableOpacity style={styles.searchButton}>
             <MaterialCommunityIcons name="magnify" size={24} color="#6B7280" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton}>
+          <TouchableOpacity style={styles.addButton} onPress={handleCreateGroup}>
             <MaterialCommunityIcons name="plus" size={24} color="#6B7280" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Quick Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{groups.length}</Text>
-          <Text style={styles.statLabel}>Grupos</Text>
+      {!loading && groups.length > 0 && (
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>{groups.length}</Text>
+            <Text style={styles.statLabel}>Grupos</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {groups.filter(g => g.isAdmin).length}
+            </Text>
+            <Text style={styles.statLabel}>Admin</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>
+              {groups.reduce((sum, g) => sum + g.memberCount, 0)}
+            </Text>
+            <Text style={styles.statLabel}>Membros</Text>
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
-            {groups.filter(g => g.isAdmin).length}
-          </Text>
-          <Text style={styles.statLabel}>Admin</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statNumber}>
-            {groups.reduce((sum, g) => sum + g.memberCount, 0)}
-          </Text>
-          <Text style={styles.statLabel}>Membros</Text>
-        </View>
-      </View>
+      )}
 
       {/* Groups List */}
-      <FlatList
-        data={groups}
-        renderItem={renderGroupItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
-
+      {loading ? (
+        renderLoadingState()
+      ) : (
+        <FlatList
+          data={groups}
+          renderItem={renderGroupItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          ListEmptyComponent={renderEmptyState}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -357,6 +379,17 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#2563EB',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 16,
   },
 });
 
