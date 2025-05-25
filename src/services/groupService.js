@@ -222,6 +222,8 @@ export const fetchUserGroups = async () => {
 // Buscar detalhes de um grupo específico
 export const fetchGroupById = async (groupId) => {
   try {
+    console.log('🔍 Buscando detalhes do grupo:', groupId);
+    
     const groupQuery = `id=eq.${groupId}&select=*`;
     const groups = await getTable('groups', groupQuery);
     
@@ -230,18 +232,167 @@ export const fetchGroupById = async (groupId) => {
     }
 
     const group = groups[0];
+    console.log('✅ Grupo encontrado:', group.name);
 
-    // Buscar membros do grupo
-    const membersQuery = `group_id=eq.${groupId}&select=*,user_extra_information:user_id(first_name,last_name,image_url,registration_number)`;
+    // Buscar membros do grupo com informações do usuário
+    const membersQuery = `group_id=eq.${groupId}&select=*`;
     const members = await getTable('group_members', membersQuery);
+    
+    // Para cada membro, buscar informações adicionais do usuário
+    const enrichedMembers = await Promise.all(
+      (members || []).map(async (member) => {
+        try {
+          const userQuery = `user_id=eq.${member.user_id}&select=first_name,last_name,image_url,registration_number`;
+          const users = await getTable('user_extra_information', userQuery);
+          const user = users && users.length > 0 ? users[0] : null;
+          
+          return {
+            ...member,
+            user: user ? {
+              first_name: user.first_name,
+              last_name: user.last_name,
+              full_name: `${user.first_name} ${user.last_name}`,
+              image_url: user.image_url,
+              registration_number: user.registration_number
+            } : {
+              first_name: 'Usuário',
+              last_name: 'Desconhecido',
+              full_name: 'Usuário Desconhecido',
+              image_url: null,
+              registration_number: 'N/A'
+            }
+          };
+        } catch (error) {
+          console.error('❌ Erro ao buscar dados do membro:', error);
+          return {
+            ...member,
+            user: {
+              first_name: 'Usuário',
+              last_name: 'Desconhecido',
+              full_name: 'Usuário Desconhecido',
+              image_url: null,
+              registration_number: 'N/A'
+            }
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Encontrados ${enrichedMembers.length} membros`);
 
     return {
       ...group,
-      members: members || []
+      members: enrichedMembers,
+      memberCount: enrichedMembers.length,
+      adminCount: enrichedMembers.filter(m => m.role === 'admin').length
     };
   } catch (error) {
     console.error('❌ Erro ao buscar grupo por ID:', error);
     throw new Error(error.message || 'Falha ao buscar grupo');
+  }
+};
+
+// Buscar produtos do grupo
+export const fetchGroupProducts = async (groupId) => {
+  try {
+    console.log('🔍 Buscando produtos do grupo:', groupId);
+    
+    // Buscar relações grupo-produto
+    const groupProductsQuery = `group_id=eq.${groupId}&select=*`;
+    const groupProducts = await getTable('group_products', groupProductsQuery);
+    
+    if (!groupProducts || groupProducts.length === 0) {
+      console.log('⚠️ Nenhum produto encontrado no grupo');
+      return [];
+    }
+
+    // Buscar detalhes dos produtos
+    const productIds = groupProducts.map(gp => gp.product_id);
+    const productsQuery = `id=in.(${productIds.join(',')})&select=*`;
+    const products = await getTable('products', productsQuery);
+    
+    if (!products || products.length === 0) {
+      return [];
+    }
+
+    // Para cada produto, buscar imagens e informações do proprietário
+    const enrichedProducts = await Promise.all(
+      products.map(async (product) => {
+        try {
+          // Buscar imagens do produto
+          const imagesQuery = `product_id=eq.${product.id}&select=image_url`;
+          const images = await getTable('product_images', imagesQuery);
+          
+          // Buscar informações do proprietário
+          const ownerQuery = `user_id=eq.${product.user_id}&select=first_name,last_name,image_url`;
+          const owners = await getTable('user_extra_information', ownerQuery);
+          const owner = owners && owners.length > 0 ? owners[0] : null;
+          
+          // Buscar status no grupo
+          const groupProduct = groupProducts.find(gp => gp.product_id === product.id);
+          
+          return {
+            ...product,
+            images: images ? images.map(img => img.image_url) : [],
+            mainImage: images && images.length > 0 ? images[0].image_url : null,
+            owner: owner ? {
+              name: `${owner.first_name} ${owner.last_name}`,
+              image_url: owner.image_url
+            } : {
+              name: 'Proprietário Desconhecido',
+              image_url: null
+            },
+            groupStatus: groupProduct?.status || 'pendente',
+            priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`
+          };
+        } catch (error) {
+          console.error(`❌ Erro ao processar produto ${product.id}:`, error);
+          return {
+            ...product,
+            images: [],
+            mainImage: null,
+            owner: { name: 'Proprietário Desconhecido', image_url: null },
+            groupStatus: 'pendente',
+            priceFormatted: `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Encontrados ${enrichedProducts.length} produtos no grupo`);
+    return enrichedProducts;
+  } catch (error) {
+    console.error('❌ Erro ao buscar produtos do grupo:', error);
+    throw new Error(error.message || 'Falha ao buscar produtos do grupo');
+  }
+};
+
+// Verificar se usuário é membro do grupo
+export const checkUserMembership = async (groupId, userId = null) => {
+  try {
+    const currentUserId = userId || await AsyncStorage.getItem('userId');
+    if (!currentUserId) {
+      return { isMember: false, role: null, status: null };
+    }
+
+    const memberQuery = `group_id=eq.${groupId}&user_id=eq.${currentUserId}`;
+    const memberships = await getTable('group_members', memberQuery);
+    
+    if (!memberships || memberships.length === 0) {
+      return { isMember: false, role: null, status: null };
+    }
+
+    const membership = memberships[0];
+    return {
+      isMember: true,
+      role: membership.role,
+      status: membership.status,
+      isAdmin: membership.role === 'admin',
+      isActive: membership.status === 'ativo'
+    };
+  } catch (error) {
+    console.error('❌ Erro ao verificar membership:', error);
+    return { isMember: false, role: null, status: null };
   }
 };
 

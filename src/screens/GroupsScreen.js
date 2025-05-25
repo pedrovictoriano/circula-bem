@@ -128,7 +128,10 @@ const GroupsScreen = () => {
     console.log('🎨 [renderGroupItem] memberCount:', item.memberCount);
     
     return (
-      <TouchableOpacity style={styles.groupCard}>
+      <TouchableOpacity 
+        style={styles.groupCard}
+        onPress={() => navigation.navigate('GroupDetail', { groupId: item.id })}
+      >
         <View style={styles.groupImageContainer}>
           <Image 
             source={getGroupImage(item.image_url)} 
