@@ -14,6 +14,8 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CreateProduct from '../screens/CreateProduct';
 import CreateGroup from '../screens/CreateGroup';
 import MyRentsScreen from '../screens/MyRentsScreen';
+import MyProductsScreen from '../screens/MyProductsScreen';
+import RentManagementScreen from '../screens/RentManagementScreen';
 import GroupsScreen from '../screens/GroupsScreen';
 import AccountScreen from '../screens/AccountScreen';
 import MainLayout from '../components/MainLayout';
@@ -56,6 +58,20 @@ const AppNavigator = () => {
         {() => (
           <ScreenWrapper>
             <MyRentsScreen />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="MyProducts" options={{ title: 'Meus Produtos' }}>
+        {() => (
+          <ScreenWrapper>
+            <MyProductsScreen />
+          </ScreenWrapper>
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="RentManagement" options={{ title: 'Gerenciamento de Aluguel' }}>
+        {() => (
+          <ScreenWrapper>
+            <RentManagementScreen />
           </ScreenWrapper>
         )}
       </Stack.Screen>

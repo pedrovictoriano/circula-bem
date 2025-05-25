@@ -75,20 +75,51 @@ export async function insertIntoTable(table, data) {
   }
 }
 
-
 export async function updateTableById(table, id, data) {
-  const token = await AsyncStorage.getItem('token');
-  
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
-    method: 'PATCH',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${token || SUPABASE_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-  return response.json();
+  try {
+    const token = await AsyncStorage.getItem('token');
+    
+    console.log(`🔄 Atualizando ${table} com ID ${id}:`, data);
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${token || SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify(data),
+    });
+    
+    console.log(`📡 Status da resposta updateTableById: ${response.status} ${response.statusText}`);
+    
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`❌ Erro na atualização:`, errorBody);
+      throw new Error(`Erro ao atualizar ${table}: ${response.status} ${response.statusText} - ${errorBody}`);
+    }
+    
+    // Verificar se há conteúdo na resposta
+    const responseText = await response.text();
+    
+    if (!responseText || responseText.trim() === '') {
+      console.log(`✅ Atualização bem-sucedida (resposta vazia)`);
+      return { success: true };
+    }
+    
+    try {
+      const responseData = JSON.parse(responseText);
+      console.log(`✅ Dados atualizados:`, responseData);
+      return responseData;
+    } catch (parseError) {
+      console.log(`✅ Atualização bem-sucedida (resposta não-JSON):`, responseText);
+      return { success: true, message: responseText };
+    }
+  } catch (error) {
+    console.error(`❌ Erro em updateTableById para "${table}":`, error);
+    throw error;
+  }
 }
 
 export async function deleteFromTableById(table, id) {

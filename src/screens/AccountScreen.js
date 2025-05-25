@@ -11,8 +11,10 @@ import {
   Switch,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const AccountScreen = () => {
+  const navigation = useNavigation();
   const [notifications, setNotifications] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [locationSharing, setLocationSharing] = useState(true);
@@ -29,6 +31,24 @@ const AccountScreen = () => {
     groupsCount: 3,
   };
 
+  // Funções de navegação para os cards de estatísticas
+  const handleRentsPress = () => {
+    navigation.navigate('MyRents');
+  };
+
+  const handleProductsPress = () => {
+    navigation.navigate('MyProducts');
+  };
+
+  const handleGroupsPress = () => {
+    // Para quando implementarmos a tela de grupos
+    console.log('Navegar para grupos');
+  };
+
+  const handleRentManagementPress = () => {
+    navigation.navigate('RentManagement');
+  };
+
   const menuItems = [
     {
       section: 'Perfil',
@@ -41,7 +61,8 @@ const AccountScreen = () => {
     {
       section: 'Atividade',
       items: [
-        { key: 'my-products', icon: 'cube-outline', label: 'Meus Produtos', action: () => {} },
+        { key: 'my-products', icon: 'cube-outline', label: 'Meus Produtos', action: handleProductsPress },
+        { key: 'rent-management', icon: 'clipboard-check', label: 'Gerenciar Aluguéis', action: handleRentManagementPress },
         { key: 'reviews', icon: 'star-outline', label: 'Avaliações', action: () => {} },
         { key: 'history', icon: 'history', label: 'Histórico de Atividades', action: () => {} },
       ]
@@ -150,18 +171,21 @@ const AccountScreen = () => {
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <TouchableOpacity style={styles.statCard} onPress={handleRentsPress}>
+            <MaterialCommunityIcons name="clipboard-list" size={24} color="#2563EB" style={styles.statIcon} />
             <Text style={styles.statNumber}>{userData.totalRents}</Text>
             <Text style={styles.statLabel}>Aluguéis</Text>
-          </View>
-          <View style={styles.statCard}>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard} onPress={handleProductsPress}>
+            <MaterialCommunityIcons name="package-variant" size={24} color="#2563EB" style={styles.statIcon} />
             <Text style={styles.statNumber}>{userData.productsShared}</Text>
             <Text style={styles.statLabel}>Produtos</Text>
-          </View>
-          <View style={styles.statCard}>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard} onPress={handleGroupsPress}>
+            <MaterialCommunityIcons name="account-group" size={24} color="#2563EB" style={styles.statIcon} />
             <Text style={styles.statNumber}>{userData.groupsCount}</Text>
             <Text style={styles.statLabel}>Grupos</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Menu Sections */}
@@ -282,6 +306,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
+  },
+  statIcon: {
+    marginBottom: 8,
   },
   statNumber: {
     fontSize: 20,
