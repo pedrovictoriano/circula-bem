@@ -86,8 +86,15 @@ export const uploadGroupImage = async (groupId, imageUri) => {
       throw new Error('Configuração do Supabase não encontrada para upload');
     }
     
+    console.log('📤 Iniciando upload da imagem do grupo');
+    console.log('🏷️ GroupId:', groupId);
+    console.log('📱 ImageUri:', imageUri);
+    console.log('🔧 SUPABASE_CONFIG.URL:', SUPABASE_CONFIG.URL);
+    
     // Gerar nome único para a imagem
     const uniqueName = `${groupId}/${groupId}_cover.jpg`;
+    console.log('📝 Nome único gerado:', uniqueName);
+    
     const formData = new FormData();
     formData.append('file', {
       uri: imageUri,
@@ -117,10 +124,15 @@ export const uploadGroupImage = async (groupId, imageUri) => {
       throw new Error(`Falha ao fazer upload da imagem do grupo: ${errorText}`);
     }
 
-    // URL pública da imagem
+    // URL pública da imagem - SEGUINDO O PADRÃO DOS PRODUTOS
     const imageUrl = `${SUPABASE_CONFIG.URL}/storage/v1/object/public/group-images/${uniqueName}`;
     
-    console.log('✅ Imagem do grupo enviada com sucesso:', imageUrl);
+    console.log('✅ Imagem do grupo enviada com sucesso');
+    console.log('🔗 URL pública gerada:', imageUrl);
+    console.log('📊 Comparação com padrão de produtos:');
+    console.log('  - Produto: ${SUPABASE_CONFIG.URL}/storage/v1/object/public/product-images/${uniqueName}');
+    console.log('  - Grupo:   ${SUPABASE_CONFIG.URL}/storage/v1/object/public/group-images/${uniqueName}');
+    
     return imageUrl;
   } catch (error) {
     console.error('❌ Erro detalhado ao fazer upload da imagem do grupo:', error);
@@ -236,8 +248,23 @@ export const fetchGroupById = async (groupId) => {
 // Atualizar grupo
 export const updateGroup = async (groupId, updateData) => {
   try {
+    console.log('🔄 Atualizando grupo:', groupId);
+    console.log('📝 Dados para atualização:', updateData);
+    
     const result = await updateTableById('groups', groupId, updateData);
-    console.log('✅ Grupo atualizado:', result);
+    
+    console.log('✅ Grupo atualizado no banco de dados');
+    console.log('📊 Resultado da atualização:', result);
+    
+    // Verificar se a URL da imagem foi salva corretamente
+    if (updateData.image_url) {
+      console.log('🖼️ URL da imagem salva:', updateData.image_url);
+      console.log('🔍 Verificação da URL:');
+      console.log('  - Inicia com http:', updateData.image_url.startsWith('http'));
+      console.log('  - Contém group-images:', updateData.image_url.includes('group-images'));
+      console.log('  - Contém groupId:', updateData.image_url.includes(groupId));
+    }
+    
     return result;
   } catch (error) {
     console.error('❌ Erro ao atualizar grupo:', error);

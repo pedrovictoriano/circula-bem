@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { SUPABASE_CONFIG } from '../config/env';
 import useGroupStore from '../stores/groupStore';
 
 const GroupsScreen = () => {
@@ -82,49 +83,99 @@ const GroupsScreen = () => {
   };
 
   const getGroupImage = (imageUrl) => {
-    if (imageUrl) {
-      return { uri: imageUrl };
+    console.log('🖼️ [getGroupImage] Processando imagem do grupo');
+    console.log('🖼️ [getGroupImage] Input imageUrl:', imageUrl);
+    console.log('🖼️ [getGroupImage] Tipo:', typeof imageUrl);
+    console.log('🖼️ [getGroupImage] É string?', typeof imageUrl === 'string');
+    console.log('🖼️ [getGroupImage] Está vazio?', !imageUrl || imageUrl.trim() === '');
+    
+    if (imageUrl && imageUrl.trim() !== '') {
+      // Verificar se a URL já é completa (salva pelo uploadGroupImage)
+      const isCompleteUrl = imageUrl.startsWith('http');
+      console.log('🖼️ [getGroupImage] É URL completa (http)?', isCompleteUrl);
+      
+      if (isCompleteUrl) {
+        console.log('✅ [getGroupImage] URL completa encontrada:', imageUrl);
+        console.log('✅ [getGroupImage] Verificações da URL:');
+        console.log('  - Contém group-images:', imageUrl.includes('group-images'));
+        console.log('  - Contém storage/v1/object/public:', imageUrl.includes('storage/v1/object/public'));
+        console.log('  - URL do Supabase correto:', imageUrl.includes(SUPABASE_CONFIG.URL));
+        return { uri: imageUrl };
+      }
+      
+      // Se não é uma URL completa, construir a URL do Supabase Storage usando a config
+      const fullUrl = `${SUPABASE_CONFIG.URL}/storage/v1/object/public/group-images/${imageUrl}`;
+      console.log('🔗 [getGroupImage] Construindo URL completa');
+      console.log('🔗 [getGroupImage] SUPABASE_CONFIG.URL:', SUPABASE_CONFIG.URL);
+      console.log('🔗 [getGroupImage] Caminho da imagem:', imageUrl);
+      console.log('🔗 [getGroupImage] URL construída:', fullUrl);
+      return { uri: fullUrl };
     }
-    // Usar uma imagem placeholder padrão
-    return { uri: 'https://via.placeholder.com/120x120/E5E7EB/9CA3AF?text=Grupo' };
+    
+    // Usar imagem placeholder para grupos sem foto
+    console.log('📷 [getGroupImage] Usando placeholder para grupo sem imagem');
+    const placeholderUrl = 'https://via.placeholder.com/120x120/E5E7EB/9CA3AF?text=Grupo';
+    console.log('📷 [getGroupImage] URL do placeholder:', placeholderUrl);
+    return { uri: placeholderUrl };
   };
 
-  const renderGroupItem = ({ item }) => (
-    <TouchableOpacity style={styles.groupCard}>
-      <View style={styles.groupImageContainer}>
-        <Image 
-          source={getGroupImage(item.image_url)} 
-          style={styles.groupImage}
-        />
-        {item.isAdmin && (
-          <View style={styles.adminBadge}>
-            <MaterialCommunityIcons name="crown" size={12} color="#FFF" />
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.groupInfo}>
-        <Text style={styles.groupName}>{item.name}</Text>
-        <Text style={styles.groupDescription} numberOfLines={2}>
-          {item.description}
-        </Text>
-        <View style={styles.groupMeta}>
-          <Text style={styles.memberCount}>
-            {formatMemberCount(item.memberCount)}
-          </Text>
-          <Text style={styles.lastActivity}>
-            • Criado {formatLastActivity(item.created_at)}
-          </Text>
+  const renderGroupItem = ({ item }) => {
+    console.log('🎨 [renderGroupItem] =========================');
+    console.log('🎨 [renderGroupItem] Renderizando grupo:', item.name);
+    console.log('🎨 [renderGroupItem] ID do grupo:', item.id);
+    console.log('🎨 [renderGroupItem] image_url salva:', item.image_url);
+    console.log('🎨 [renderGroupItem] isAdmin:', item.isAdmin);
+    console.log('🎨 [renderGroupItem] memberCount:', item.memberCount);
+    
+    return (
+      <TouchableOpacity style={styles.groupCard}>
+        <View style={styles.groupImageContainer}>
+          <Image 
+            source={getGroupImage(item.image_url)} 
+            style={styles.groupImage}
+            onError={(error) => {
+              console.log('❌ [renderGroupItem] Erro ao carregar imagem do grupo:', item.name, error.nativeEvent.error);
+              console.log('❌ [renderGroupItem] URL que falhou:', item.image_url);
+            }}
+            onLoad={() => {
+              console.log('✅ [renderGroupItem] Imagem do grupo carregada com sucesso:', item.name);
+              console.log('✅ [renderGroupItem] URL que funcionou:', item.image_url);
+            }}
+            onLoadStart={() => {
+              console.log('⏳ [renderGroupItem] Iniciando carregamento da imagem:', item.name);
+              console.log('⏳ [renderGroupItem] URL sendo carregada:', item.image_url);
+            }}
+          />
+          {item.isAdmin && (
+            <View style={styles.adminBadge}>
+              <MaterialCommunityIcons name="crown" size={12} color="#FFF" />
+            </View>
+          )}
         </View>
-      </View>
-      
-      <MaterialCommunityIcons 
-        name="chevron-right" 
-        size={24} 
-        color="#9CA3AF" 
-      />
-    </TouchableOpacity>
-  );
+        
+        <View style={styles.groupInfo}>
+          <Text style={styles.groupName}>{item.name}</Text>
+          <Text style={styles.groupDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+          <View style={styles.groupMeta}>
+            <Text style={styles.memberCount}>
+              {formatMemberCount(item.memberCount)}
+            </Text>
+            <Text style={styles.lastActivity}>
+              • Criado {formatLastActivity(item.created_at)}
+            </Text>
+          </View>
+        </View>
+        
+        <MaterialCommunityIcons 
+          name="chevron-right" 
+          size={24} 
+          color="#9CA3AF" 
+        />
+      </TouchableOpacity>
+    );
+  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>

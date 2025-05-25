@@ -76,6 +76,16 @@ create table public.group_members (
   constraint group_members_user_id_fkey foreign KEY (user_id) references auth.users (id)
 ) TABLESPACE pg_default;
 
+create table public.group_products (
+  id uuid not null default gen_random_uuid (),
+  group_id uuid null,
+  product_id uuid null,
+  status public.group_product_status null,
+  constraint group_products_pkey primary key (id),
+  constraint group_products_group_id_fkey foreign KEY (group_id) references groups (id) on update RESTRICT on delete CASCADE,
+  constraint group_products_product_id_fkey foreign KEY (product_id) references products (id) on update RESTRICT on delete CASCADE
+) TABLESPACE pg_default;
+
 create table public.categories (
   id uuid not null default gen_random_uuid (),
   description text not null,
@@ -128,5 +138,10 @@ create type public.rent_status as enum (
   'concluído'
 );
 
+create type public.group_product_status as enum (
+  'pendente',
+  'confirmado',
+  'negado'
+);
 
 # USE ZUSTAND WHEN USING GLOBAL STATE.
