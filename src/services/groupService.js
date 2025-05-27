@@ -700,4 +700,129 @@ const generateUniqueHandle = (name) => {
 
 const generateInviteLink = (handle) => {
   return `https://circulabem.app/groups/join/${handle}`;
+};
+
+// Validar e processar link de convite
+export const validateInviteLink = (inviteLink) => {
+  try {
+    console.log('🔗 Validando link de convite:', inviteLink);
+    
+    if (!inviteLink || typeof inviteLink !== 'string') {
+      throw new Error('Link de convite inválido');
+    }
+
+    // Limpar espaços em branco
+    const cleanLink = inviteLink.trim();
+    
+    // Padrões de link aceitos
+    const patterns = [
+      /^https:\/\/circulabem\.app\/groups\/join\/(.+)$/,  // Link completo
+      /^circulabem\.app\/groups\/join\/(.+)$/,            // Sem https://
+      /^groups\/join\/(.+)$/,                             // Apenas path
+      /^join\/(.+)$/,                                     // Apenas join/handle
+      /^(.+)$/                                            // Apenas handle
+    ];
+
+    let handle = null;
+    
+    for (const pattern of patterns) {
+      const match = cleanLink.match(pattern);
+      if (match) {
+        handle = match[1];
+        break;
+      }
+    }
+
+    if (!handle) {
+      throw new Error('Formato de link inválido');
+    }
+
+    // Validar o handle
+    if (handle.length < 3) {
+      throw new Error('Handle do grupo muito curto');
+    }
+
+    if (!/^[a-z0-9-]+$/.test(handle)) {
+      throw new Error('Handle contém caracteres inválidos');
+    }
+
+    console.log('✅ Handle extraído:', handle);
+    return handle;
+  } catch (error) {
+    console.error('❌ Erro ao validar link:', error);
+    throw new Error(error.message || 'Link de convite inválido');
+  }
+};
+
+// Buscar grupo por handle
+export const fetchGroupByHandle = async (handle) => {
+  try {
+    console.log('🔍 Buscando grupo por handle:', handle);
+    
+    const groupQuery = `handle=eq.${handle}&select=*`;
+    const groups = await getTable('groups', groupQuery);
+    
+    if (!groups || groups.length === 0) {
+      throw new Error('Grupo não encontrado');
+    }
+
+    const group = groups[0];
+    console.log('✅ Grupo encontrado:', group.name);
+
+    // Buscar informações adicionais do grupo
+    const memberCountQuery = `group_id=eq.${group.id}&status=eq.ativo&select=id`;
+    const members = await getTable('group_members', memberCountQuery);
+    const memberCount = members ? members.length : 0;
+
+    // Verificar membership do usuário atual
+    const userId = await AsyncStorage.getItem('userId');
+    let membership = { isMember: false, role: null, status: null };
+    
+    if (userId) {
+      membership = await checkUserMembership(group.id, userId);
+    }
+
+    return {
+      ...group,
+      memberCount,
+      membership
+    };
+  } catch (error) {
+    console.error('❌ Erro ao buscar grupo por handle:', error);
+    throw new Error(error.message || 'Falha ao buscar grupo');
+  }
+};
+
+// Solicitar participação através de link de convite
+export const requestMembershipByInvite = async (inviteLink) => {
+  try {
+    console.log('🎫 Processando solicitação por convite:', inviteLink);
+    
+    // Validar e extrair handle do link
+    const handle = validateInviteLink(inviteLink);
+    
+    // Buscar grupo pelo handle
+    const group = await fetchGroupByHandle(handle);
+    
+    // Verificar se usuário já é membro
+    if (group.membership.isMember) {
+      if (group.membership.status === 'ativo') {
+        throw new Error('Você já é membro deste grupo');
+      } else if (group.membership.status === 'pendente') {
+        throw new Error('Você já possui uma solicitação pendente para este grupo');
+      }
+    }
+    
+    // Solicitar participação no grupo
+    await requestGroupMembership(group.id);
+    
+    console.log('✅ Solicitação por convite processada com sucesso');
+    return {
+      group,
+      message: `Solicitação enviada para o grupo "${group.name}"! Aguarde a aprovação dos administradores.`
+    };
+  } catch (error) {
+    console.error('❌ Erro ao processar convite:', error);
+    throw new Error(error.message || 'Falha ao processar link de convite');
+  }
 }; 

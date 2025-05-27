@@ -12,6 +12,7 @@ import {
   Alert,
   RefreshControl,
   FlatList,
+  Share,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -111,17 +112,33 @@ const GroupDetailScreen = () => {
   const handleCopyInviteLink = async () => {
     try {
       if (group?.invite_link) {
-        // Usando uma implementação simples para mostrar o link
+        // Mostrar opções ao usuário
         Alert.alert(
-          'Link de Convite',
-          group.invite_link,
+          'Compartilhar Convite',
+          `Escolha como deseja compartilhar o convite do grupo "${group.name}":`,
           [
             { text: 'Cancelar', style: 'cancel' },
-            { 
-              text: 'Copiar', 
+            {
+              text: 'Ver Link',
               onPress: () => {
-                // Aqui você pode implementar a cópia real se tiver o @react-native-clipboard/clipboard
-                Alert.alert('Sucesso', 'Link copiado! (funcionalidade em desenvolvimento)');
+                Alert.alert(
+                  'Link de Convite',
+                  `Copie o link abaixo:\n\n${group.invite_link}`,
+                  [{ text: 'OK', style: 'default' }]
+                );
+              }
+            },
+            {
+              text: 'Compartilhar',
+              onPress: async () => {
+                try {
+                  await Share.share({
+                    message: `Convite para o grupo "${group.name}":\n\n${group.invite_link}`,
+                    url: group.invite_link,
+                  });
+                } catch (shareError) {
+                  Alert.alert('Erro', 'Não foi possível compartilhar');
+                }
               }
             }
           ]
@@ -130,8 +147,7 @@ const GroupDetailScreen = () => {
         Alert.alert('Erro', 'Link de convite não disponível');
       }
     } catch (error) {
-      console.error('❌ Erro ao copiar link:', error);
-      Alert.alert('Erro', 'Não foi possível copiar o link');
+      Alert.alert('Erro', 'Não foi possível acessar o link de convite');
     }
   };
 
@@ -473,8 +489,8 @@ const GroupDetailScreen = () => {
                 style={styles.inviteButton}
                 onPress={handleCopyInviteLink}
               >
-                <MaterialCommunityIcons name="link" size={20} color="#2563EB" />
-                <Text style={styles.inviteButtonText}>Copiar Link de Convite</Text>
+                <MaterialCommunityIcons name="share-variant" size={20} color="#2563EB" />
+                <Text style={styles.inviteButtonText}>Compartilhar Convite</Text>
               </TouchableOpacity>
             )}
             
