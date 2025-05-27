@@ -7,20 +7,22 @@ create table public.user_extra_information (
   first_name character varying(50) not null,
   last_name character varying(50) not null,
   user_id uuid null default auth.uid (),
+  image_url character varying null,
   constraint PK_user primary key (registration_number),
   constraint user_registrationnumber_key unique (registration_number),
   constraint user_extra_information_user_id_fkey foreign KEY (user_id) references auth.users (id) on update RESTRICT on delete CASCADE
 ) TABLESPACE pg_default;
 
 create table public.rents (
-  product_id uuid not null,
-  start_date timestamp without time zone not null,
-  end_date timestamp without time zone not null,
-  id uuid not null,
-  user_id uuid null default auth.uid (),
-  constraint rent_pkey primary key (product_id, start_date, end_date),
-  constraint FK_rent_product_productid foreign KEY (product_id) references products (id) on delete CASCADE,
-  constraint rent_user_id_fkey foreign KEY (user_id) references auth.users (id) on update CASCADE on delete CASCADE
+  id uuid not null default gen_random_uuid (),
+  product_id uuid null,
+  user_id uuid null,
+  status public.rent_status null,
+  total_amount integer null,
+  dates date[] null,
+  constraint rents_pkey primary key (id),
+  constraint rents_product_id_fkey foreign KEY (product_id) references products (id) on update RESTRICT on delete CASCADE,
+  constraint rents_user_id_fkey foreign KEY (user_id) references auth.users (id) on update RESTRICT on delete CASCADE
 ) TABLESPACE pg_default;
 
 create index IF not exists "IX_rent_productid" on public.rents using btree (product_id) TABLESPACE pg_default;
@@ -74,6 +76,16 @@ create table public.group_members (
   constraint group_members_user_id_fkey foreign KEY (user_id) references auth.users (id)
 ) TABLESPACE pg_default;
 
+create table public.group_products (
+  id uuid not null default gen_random_uuid (),
+  group_id uuid null,
+  product_id uuid null,
+  status public.group_product_status null,
+  constraint group_products_pkey primary key (id),
+  constraint group_products_group_id_fkey foreign KEY (group_id) references groups (id) on update RESTRICT on delete CASCADE,
+  constraint group_products_product_id_fkey foreign KEY (product_id) references products (id) on update RESTRICT on delete CASCADE
+) TABLESPACE pg_default;
+
 create table public.categories (
   id uuid not null default gen_random_uuid (),
   description text not null,
@@ -117,3 +129,19 @@ create type public.group_member_status as enum (
   'pendente',
   'ativo'
 );
+
+create type public.rent_status as enum (
+  'pendente',
+  'confirmado',
+  'em andamento',
+  'cancelado',
+  'concluído'
+);
+
+create type public.group_product_status as enum (
+  'pendente',
+  'confirmado',
+  'negado'
+);
+
+# USE ZUSTAND WHEN USING GLOBAL STATE.

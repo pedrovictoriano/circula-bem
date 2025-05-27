@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import BottomNavigationBar from '../screens/BottomNavigationBar';
 import { fetchCategories } from '../services/categoryService';
 import { fetchProducts } from '../services/productService';
+import { fetchUserById } from '../services/api';
+import ProfileImage from '../components/ProfileImage';
 
 const INFO_CARDS = [
   { icon: 'clock-outline', label: 'Ativos', value: 5 },
@@ -16,7 +17,7 @@ const INFO_CARDS = [
 const HomeScreen = () => {
   const navigation = useNavigation();
   const [userName, setUserName] = useState('');
-  const [profilePic, setProfilePic] = useState('https://i.pravatar.cc/150?img=12');
+  const [userData, setUserData] = useState(null);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,10 +28,18 @@ const HomeScreen = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
+      
+      // Buscar dados do usuário
+      const userId = await AsyncStorage.getItem('userId');
+      if (userId) {
+        const user = await fetchUserById(userId);
+        setUserData(user);
+        setUserName(user ? `${user.first_name} ${user.last_name}` : '');
+      }
+      
       const cats = await fetchCategories();
       setCategories(cats);
       const prods = await fetchProducts();
-      console.log(prods);
       setProducts(prods);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -47,7 +56,6 @@ const HomeScreen = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    console.log('onRefresh', new Date().toISOString());
     loadData();
   };
 
@@ -55,8 +63,16 @@ const HomeScreen = () => {
     <>
       {/* Header */}
       <View style={styles.header}>
-        <Image source={{ uri: profilePic }} style={styles.profilePic} />
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={styles.headerLeft}>
+          <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+          <ProfileImage
+            imageUrl={userData?.image_url}
+            size={40}
+            borderWidth={2}
+            borderColor="#fff"
+          />
+        </View>
+        <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerIcon}>
             <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
           </TouchableOpacity>
@@ -136,7 +152,7 @@ const HomeScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <FlatList
         data={filteredProducts}
         keyExtractor={item => item.id?.toString()}
@@ -165,8 +181,7 @@ const HomeScreen = () => {
         refreshing={refreshing}
         onRefresh={onRefresh}
       />
-      <BottomNavigationBar />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -180,16 +195,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 15,
     paddingBottom: 10,
+    backgroundColor: '#F7F8FA',
   },
-  profilePic: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: '#fff',
-    backgroundColor: '#eee',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 80,
+    height: 32,
+    marginRight: 12,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerIcon: {
     marginLeft: 18,
@@ -308,7 +329,7 @@ const styles = StyleSheet.create({
   },
   productsGrid: {
     paddingHorizontal: 10,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   productCard: {
     backgroundColor: '#fff',

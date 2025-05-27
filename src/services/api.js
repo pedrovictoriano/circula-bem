@@ -4,11 +4,16 @@ import {
   updateTableById,
   deleteFromTableById
 } from './supabaseClient';
+import { SUPABASE_CONFIG } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
-const SUPABASE_URL = 'https://gcwjfkswymioiwhuaiku.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjd2pma3N3eW1pb2l3aHVhaWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5Mjc1OTUsImV4cCI6MjA2MDUwMzU5NX0.h8ciNTFQpAoHB0Tik8ktUDvpJR-FzsWFGrQo1uN3MFQ';
+const SUPABASE_URL = SUPABASE_CONFIG.URL;
+const SUPABASE_KEY = SUPABASE_CONFIG.KEY;
+
+// Exportar configuração para compatibilidade
+export { SUPABASE_CONFIG };
 
 export const fetchUserById = async (userId) => {
   const result = await getTable('user_extra_information', `user_id=eq.${userId}`);
@@ -19,15 +24,68 @@ export const fetchUserById = async (userId) => {
 };
 
 export const fetchRentedDates = async (productId, startDate, endDate) => {
-  const filter = `product_id=eq.${productId}&start_date=gte.${startDate}&end_date=lte.${endDate}`;
-  return await getTable('rentals', filter);
+  // Usar a nova função do rentService
+  const { fetchRentedDatesForProduct } = require('./rentService');
+  try {
+    const result = await fetchRentedDatesForProduct(productId, startDate, endDate);
+    console.log('Rented dates result:', result);
+    return result || [];
+  } catch (error) {
+    console.error('Error fetching rented dates:', error);
+    return [];
+  }
 };
 
 export const createRental = async (rentalData) => {
-  return await insertIntoTable('rentals', rentalData);
+  return await insertIntoTable('rents', rentalData);
 };
 
-export const registerUser = async ({ email, pwd, name, surName, regNum, address }) => {
+// Função atualizada para criar um único aluguel com múltiplas datas
+export const createSingleRentalWithDates = async (productId, userId, selectedDates, productPrice) => {
+  try {
+    console.log('Creating single rental with multiple dates:', { productId, userId, selectedDates });
+    
+    // Calcular o valor total (em centavos para evitar problemas de ponto flutuante)
+    const totalAmount = Math.round(productPrice * selectedDates.length * 100);
+    
+    const rentalData = {
+      id: uuidv4(),
+      product_id: productId,
+      user_id: userId,
+      dates: selectedDates, // Array de datas
+      status: 'pendente', // Status inicial
+      total_amount: totalAmount // Valor em centavos
+    };
+    
+    console.log('Creating rental with data:', rentalData);
+    const result = await insertIntoTable('rents', rentalData);
+    console.log('Rental created successfully:', result);
+    return result;
+  } catch (error) {
+    console.error('Error creating rental:', error);
+    throw error;
+  }
+};
+
+// Manter compatibilidade com função antiga (deprecated)
+export const createMultipleRentals = async (productId, userId, selectedDates, productPrice = 0) => {
+  console.warn('createMultipleRentals is deprecated. Use createSingleRentalWithDates instead.');
+  return await createSingleRentalWithDates(productId, userId, selectedDates, productPrice);
+};
+
+// Função para atualizar status de um aluguel
+export const updateRentalStatus = async (rentalId, newStatus) => {
+  try {
+    const result = await updateTableById('rents', rentalId, { status: newStatus });
+    console.log('Rental status updated:', result);
+    return result;
+  } catch (error) {
+    console.error('Error updating rental status:', error);
+    throw error;
+  }
+};
+
+export const registerUser = async ({ email, pwd, name, surName, regNum, address, imageUrl = null }) => {
   const userData = {
     email,
     password: pwd
@@ -52,7 +110,9 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
     first_name: name,
     last_name: surName,
     registration_number: regNum,
-  });
+    image_url: imageUrl
+  },
+  false);
 
 	await insertIntoTable('addresses', {
     user_id: userId,
@@ -63,7 +123,8 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address 
     street: address.street,
     number: address.number,
     complement: address.complement
-  });
+  },
+  false);
 
   return { userId };
 };

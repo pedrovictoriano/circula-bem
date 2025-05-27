@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { FontAwesome } from '@expo/vector-icons';
-import BottomNavigationBar from '../screens/BottomNavigationBar';
 
 // Exemplo de dados para as notificações
 const sampleNotifications = [
@@ -15,7 +14,6 @@ const NotificationsScreen = () => {
 
   const handlePressNotification = (id) => {
     // Aqui você pode adicionar ações como navegar para uma tela detalhada
-    console.log('Pressed notification:', id);
   };
 
   return (
@@ -37,7 +35,6 @@ const NotificationsScreen = () => {
           </TouchableOpacity>
         )}
       />
-      <BottomNavigationBar />
     </View>
   );
 };

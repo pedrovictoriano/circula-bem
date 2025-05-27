@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +18,7 @@ import { createProduct, uploadProductImage, uploadMultipleProductImages } from '
 import { fetchCategories } from '../services/categoryService';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CreateProduct = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -96,15 +98,49 @@ const CreateProduct = ({ navigation }) => {
     }
     try {
       setIsLoading(true);
-      const formattedDays = selectedDays.map(index => weekDays[index]);
+      
+      // Obter userId do AsyncStorage
+      const userId = await AsyncStorage.getItem('userId');
+      if (!userId) {
+        Alert.alert('Erro', 'Usuário não autenticado. Faça login novamente.');
+        return;
+      }
+      
+      // Validar e formatar dias da semana
+      const validDays = [
+        'domingo', 'segunda', 'terça-feira', 'quarta-feira', 
+        'quinta-feira', 'sexta-feira', 'sábado'
+      ];
+      
+      const formattedDays = selectedDays.map(index => weekDays[index]).filter(day => validDays.includes(day));
+      
+      if (formattedDays.length === 0) {
+        Alert.alert('Erro', 'Selecione pelo menos um dia válido');
+        return;
+      }
+      
+      console.log('Dias selecionados (índices):', selectedDays);
+      console.log('Dias formatados:', formattedDays);
+      
+      // Validar price
+      const parsedPrice = parseFloat(price);
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        Alert.alert('Erro', 'Preço deve ser um valor válido maior que zero');
+        return;
+      }
+      
       const productData = {
         id: uuidv4(),
-        name,
-        description,
-        price: parseFloat(price),
+        name: name.trim(),
+        description: description.trim(),
+        price: parsedPrice,
         category_id: categoryId,
         availabilities: formattedDays,
+        user_id: userId
       };
+      
+      console.log('Dados do produto a ser criado:', productData);
+      
       const product = await createProduct(productData);
       await uploadMultipleProductImages(product, imageUris);
       Alert.alert('Sucesso', 'Produto criado com sucesso!', [
@@ -112,134 +148,169 @@ const CreateProduct = ({ navigation }) => {
       ]);
     } catch (error) {
       console.error('Erro detalhado:', error);
-      Alert.alert('Erro', error.message);
+      Alert.alert('Erro', `Falha ao criar produto: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#222" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Criar Produto</Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollContent}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <MaterialCommunityIcons name="arrow-left" size={24} color="#222" />
+            </TouchableOpacity>
+            <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+          </View>
+          <Text style={styles.title}>Criar Produto</Text>
+          <View style={styles.headerRight} />
+        </View>
 
-      <View style={styles.imageContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {imageUris.map((uri, idx) => (
-            <View key={idx} style={styles.imageThumbWrap}>
-              <Image source={{ uri }} style={styles.imageThumb} />
-              <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(idx)}>
-                <MaterialCommunityIcons name="close-circle" size={22} color="#ff4444" />
-              </TouchableOpacity>
+        <View style={styles.imageSection}>
+          <Text style={styles.sectionTitle}>Fotos do Produto</Text>
+          <Text style={styles.sectionSubtitle}>Adicione até 3 fotos (primeira será a capa)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
+            <View style={styles.imageContainer}>
+              {imageUris.map((uri, idx) => (
+                <View key={idx} style={styles.imageThumbWrap}>
+                  <Image source={{ uri }} style={styles.imageThumb} />
+                  <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(idx)}>
+                    <MaterialCommunityIcons name="close-circle" size={24} color="#FF6B6B" />
+                  </TouchableOpacity>
+                  {idx === 0 && <Text style={styles.mainImageLabel}>Principal</Text>}
+                </View>
+              ))}
+              {imageUris.length < 3 && (
+                <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
+                  <MaterialCommunityIcons name="camera-plus" size={32} color="#4F8CFF" />
+                  <Text style={styles.imagePlaceholderText}>Adicionar</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          ))}
-          {imageUris.length < 3 && (
-            <TouchableOpacity style={styles.addImageBtn} onPress={pickImage}>
-              <MaterialCommunityIcons name="camera-plus" size={32} color="#666" />
-              <Text style={styles.imagePlaceholderText}>Adicionar foto</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Nome do Produto</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Digite o nome do produto"
-        />
-
-        <Text style={styles.label}>Descrição</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Descreva o produto"
-          multiline
-          numberOfLines={4}
-        />
-
-        <Text style={styles.label}>Preço (R$)</Text>
-        <TextInput
-          style={styles.input}
-          value={price}
-          onChangeText={(text) => {
-            // Remove non-numeric characters except decimal point
-            const numericValue = text.replace(/[^0-9.]/g, '');
+        <View style={styles.form}>
+          {/* Informações básicas */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Informações Básicas</Text>
             
-            // Ensure only one decimal point
-            const parts = numericValue.split('.');
-            if (parts.length > 2) {
-              setPrice(parts[0] + '.' + parts.slice(1).join(''));
-            } else {
-              setPrice(numericValue);
-            }
-          }}
-          placeholder="0.00"
-          keyboardType="decimal-pad"
-        />
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Nome do Produto</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Digite o nome do produto"
+                placeholderTextColor="#999"
+              />
+            </View>
 
-        <Text style={styles.label}>Categoria</Text>
-        <View style={styles.categoryContainer}>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryButton,
-                categoryId === category.id && styles.categoryButtonSelected
-              ]}
-              onPress={() => setCategoryId(category.id)}
-            >
-              <Text style={[
-                styles.categoryButtonText,
-                categoryId === category.id && styles.categoryButtonTextSelected
-              ]}>
-                {category.description}
-              </Text>
-            </TouchableOpacity>
-          ))}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Descrição</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Descreva o produto"
+                placeholderTextColor="#999"
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Preço por dia</Text>
+              <View style={styles.priceInputContainer}>
+                <Text style={styles.currencySymbol}>R$</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  value={price}
+                  onChangeText={(text) => {
+                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    const parts = numericValue.split('.');
+                    if (parts.length > 2) {
+                      setPrice(parts[0] + '.' + parts.slice(1).join(''));
+                    } else {
+                      setPrice(numericValue);
+                    }
+                  }}
+                  placeholder="0,00"
+                  placeholderTextColor="#999"
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Categoria */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Categoria</Text>
+            <View style={styles.categoryContainer}>
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.id}
+                  style={[
+                    styles.categoryButton,
+                    categoryId === category.id && styles.categoryButtonSelected
+                  ]}
+                  onPress={() => setCategoryId(category.id)}
+                >
+                  <Text style={[
+                    styles.categoryButtonText,
+                    categoryId === category.id && styles.categoryButtonTextSelected
+                  ]}>
+                    {category.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Disponibilidade */}
+          <View style={styles.formSection}>
+            <Text style={styles.sectionTitle}>Dias Disponíveis</Text>
+            <Text style={styles.sectionSubtitle}>Selecione os dias da semana em que o produto estará disponível</Text>
+            <View style={styles.daysContainer}>
+              {weekDays.map((day, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.dayButton,
+                    selectedDays.includes(index) && styles.dayButtonSelected
+                  ]}
+                  onPress={() => toggleDay(index)}
+                >
+                  <Text style={[
+                    styles.dayButtonText,
+                    selectedDays.includes(index) && styles.dayButtonTextSelected
+                  ]}>
+                    {day.charAt(0).toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleSubmit}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="check" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.submitButtonText}>Criar Produto</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
-
-        <Text style={styles.label}>Dias Disponíveis</Text>
-        <View style={styles.daysContainer}>
-          {weekDays.map((day, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.dayButton,
-                selectedDays.includes(index) && styles.dayButtonSelected
-              ]}
-              onPress={() => toggleDay(index)}
-            >
-              <Text style={[
-                styles.dayButtonText,
-                selectedDays.includes(index) && styles.dayButtonTextSelected
-              ]}>
-                {day.charAt(0)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleSubmit}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Criar Produto</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -248,39 +319,91 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7F8FA',
   },
+  scrollContent: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 20,
-    paddingTop: 24,
+    paddingTop: 15,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   backButton: {
-    marginRight: 16,
+    backgroundColor: '#F7F8FA',
+    borderRadius: 12,
+    padding: 8,
+    marginRight: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  headerLogo: {
+    width: 32,
+    height: 32,
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#222',
+    textAlign: 'center',
+    flex: 2,
+  },
+  headerRight: {
+    flex: 1,
+  },
+  imageSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#222',
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+  },
+  imageScroll: {
+    marginTop: 10,
   },
   imageContainer: {
-    width: '100%',
-    minHeight: 120,
-    backgroundColor: '#fff',
-    marginBottom: 20,
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingHorizontal: 4,
   },
   imageThumbWrap: {
     position: 'relative',
     marginRight: 12,
   },
   imageThumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    backgroundColor: '#eee',
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: '#F7F8FA',
   },
   removeImageBtn: {
     position: 'absolute',
@@ -288,18 +411,58 @@ const styles = StyleSheet.create({
     right: -8,
     backgroundColor: '#fff',
     borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addImageBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    backgroundColor: '#f0f0f0',
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    backgroundColor: '#F7F8FA',
+    borderWidth: 2,
+    borderColor: '#4F8CFF',
+    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
+  mainImageLabel: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: '#4F8CFF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  imagePlaceholderText: {
+    color: '#4F8CFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
   form: {
     padding: 20,
+  },
+  formSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inputGroup: {
+    marginBottom: 16,
   },
   label: {
     fontSize: 16,
@@ -308,62 +471,92 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F8FA',
     borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
+    padding: 16,
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F7F8FA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  currencySymbol: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4F8CFF',
+    marginRight: 8,
+  },
+  priceInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#222',
+  },
   categoryContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 16,
+    gap: 8,
   },
   categoryButton: {
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F8FA',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
   categoryButtonSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#4F8CFF',
+    borderColor: '#4F8CFF',
   },
   categoryButtonText: {
     color: '#666',
     fontSize: 14,
+    fontWeight: '500',
   },
   categoryButtonTextSelected: {
     color: '#fff',
+    fontWeight: '600',
   },
   daysContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    gap: 8,
   },
   dayButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F7F8FA',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
   dayButtonSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#4F8CFF',
+    borderColor: '#4F8CFF',
   },
   dayButtonText: {
     color: '#666',
@@ -374,16 +567,23 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#4F8CFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#4F8CFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 });
 

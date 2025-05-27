@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, ActivityIndicator, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchUserById } from '../services/api';
-import BottomNavigationBar from './BottomNavigationBar';
+import ProfileImage from '../components/ProfileImage';
 
 const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
@@ -55,12 +55,20 @@ const ProfileScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      {/* Header with Logo */}
+      <View style={styles.header}>
+        <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+        <Text style={styles.headerTitle}>Perfil</Text>
+      </View>
+      
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.profileContainer}>
-          <Image
-            source={{ uri: 'https://i.pravatar.cc/150?img=12' }}
-            style={styles.profileImage}
+          <ProfileImage
+            imageUrl={userData.image_url}
+            size={100}
+            borderWidth={3}
+            borderColor="#4F8CFF"
           />
           <Text style={styles.name}>{userData.first_name} {userData.last_name}</Text>
           <Text style={styles.email}>{userData.email}</Text>
@@ -69,15 +77,17 @@ const ProfileScreen = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Informações</Text>
           <View style={styles.infoItem}>
-            <Icon name="id-card" size={18} color="#233ED9" />
+            <Icon name="id-card" size={18} color="#4F8CFF" />
             <Text style={styles.infoText}>{userData.registration_number}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Icon name="home" size={18} color="#233ED9" />
-            <Text style={styles.infoText}>
-              {userData.addresses[0].street}, {userData.addresses[0].number} - {userData.addresses[0].neighborhood}, {userData.addresses[0].city} / {userData.addresses[0].state}
-            </Text>
-          </View>
+          {userData.addresses && userData.addresses.length > 0 && (
+            <View style={styles.infoItem}>
+              <Icon name="home" size={18} color="#4F8CFF" />
+              <Text style={styles.infoText}>
+                {userData.addresses[0].street}, {userData.addresses[0].number} - {userData.addresses[0].neighborhood}, {userData.addresses[0].city} / {userData.addresses[0].state}
+              </Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity style={styles.editButton}>
@@ -85,8 +95,7 @@ const ProfileScreen = () => {
         </TouchableOpacity>
       </ScrollView>
 
-      <BottomNavigationBar />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -95,7 +104,29 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F7F8FA',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 15,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#222',
   },
   scrollContainer: {
     padding: 20,
@@ -105,51 +136,77 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F7F8FA',
   },
   profileContainer: {
     alignItems: 'center',
     marginBottom: 30,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 10,
+    marginBottom: 15,
+    borderWidth: 3,
+    borderColor: '#4F8CFF',
   },
   name: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#111',
+    color: '#222',
+    marginBottom: 5,
   },
   email: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#666',
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
+    marginBottom: 15,
+    color: '#222',
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
-    gap: 10,
+    marginBottom: 15,
+    gap: 12,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#444',
     flex: 1,
+    lineHeight: 20,
   },
   editButton: {
-    backgroundColor: '#233ED9',
-    padding: 14,
-    borderRadius: 8,
+    backgroundColor: '#4F8CFF',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#4F8CFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   editButtonText: {
     color: '#fff',

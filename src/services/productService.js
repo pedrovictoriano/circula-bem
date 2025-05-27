@@ -1,10 +1,14 @@
 import { SUPABASE_CONFIG } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
+import { getTable } from './supabaseClient';
 
 export const createProduct = async (productData) => {
   try {
     const token = await AsyncStorage.getItem('token');
+    
+    console.log('Criando produto com dados:', productData);
+    console.log('Token usado:', token ? 'Token presente' : 'Usando apikey');
     
     const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/products`, {
       method: 'POST',
@@ -17,8 +21,20 @@ export const createProduct = async (productData) => {
       body: JSON.stringify(productData)
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     if (!response.ok) {
-      throw new Error(`Erro HTTP! status: ${response.status}`);
+      const errorText = await response.text();
+      console.log('Erro detalhado do servidor:', errorText);
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        console.log('Erro JSON parseado:', errorData);
+        throw new Error(`Erro HTTP ${response.status}: ${errorData.message || errorData.details || errorText}`);
+      } catch (parseError) {
+        throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+      }
     }
 
     const data = await response.json();
@@ -27,6 +43,7 @@ export const createProduct = async (productData) => {
       throw new Error('Nenhum dado recebido do Supabase');
     }
 
+    console.log('Produto criado com sucesso:', data);
     return data[0]; // Retorna o primeiro item do array
   } catch (error) {
     console.error('Erro ao criar produto:', error);
@@ -144,5 +161,166 @@ export const fetchProducts = async () => {
   } catch (error) {
     console.error('Erro ao buscar produtos:', error);
     throw new Error(error.message || 'Falha ao buscar produtos');
+  }
+};
+
+export const fetchProductById = async (productId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    
+    const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/products?id=eq.${productId}&select=*,product_images:product_images(image_url,product_id)`, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_CONFIG.KEY,
+        'Authorization': `Bearer ${token || SUPABASE_CONFIG.KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Erro HTTP! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data || data.length === 0) {
+      throw new Error('Produto não encontrado');
+    }
+
+    // Ordena as imagens para garantir que a _0 seja a primeira
+    const product = data[0];
+    return {
+      ...product,
+      product_images: (product.product_images || []).sort((a, b) => {
+        if (!a.image_url || !b.image_url) return 0;
+        return a.image_url > b.image_url ? 1 : -1;
+      })
+    };
+  } catch (error) {
+    console.error('Erro ao buscar produto por ID:', error);
+    throw new Error(error.message || 'Falha ao buscar produto');
+  }
+};
+
+export const fetchUserProducts = async () => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('🔍 Buscando produtos do usuário:', userId);
+
+    // Buscar produtos do usuário
+    const productsQuery = `user_id=eq.${userId}&select=id,name,description,price,category_id`;
+    const products = await getTable('products', productsQuery);
+    
+    if (!products || !Array.isArray(products)) {
+      console.log('⚠️ Nenhum produto encontrado');
+      return [];
+    }
+
+    console.log(`✅ Encontrados ${products.length} produtos`);
+
+    // Para cada produto, buscar categoria e imagens
+    const processedProducts = await Promise.all(
+      products.map(async (product) => {
+        try {
+          // Buscar categoria
+          const categoryQuery = `id=eq.${product.category_id}&select=description,image_url`;
+          const categories = await getTable('categories', categoryQuery);
+          const category = categories && categories.length > 0 ? categories[0] : null;
+
+          // Buscar imagens do produto
+          const imagesQuery = `product_id=eq.${product.id}&select=image_url`;
+          const images = await getTable('product_images', imagesQuery);
+
+          // Buscar estatísticas de aluguel
+          const rentStatsQuery = `product_id=eq.${product.id}&select=id,status,dates`;
+          const rents = await getTable('rents', rentStatsQuery);
+          
+          // Calcular estatísticas
+          let totalRents = 0;
+          let activeRents = 0;
+          let totalEarnings = 0;
+
+          if (rents && Array.isArray(rents)) {
+            totalRents = rents.length;
+            activeRents = rents.filter(rent => 
+              rent.status === 'confirmado' || rent.status === 'em andamento'
+            ).length;
+            
+            // Calcular ganhos (aproximado baseado nas datas)
+            rents.forEach(rent => {
+              if (rent.dates && Array.isArray(rent.dates)) {
+                totalEarnings += rent.dates.length * parseFloat(product.price);
+              }
+            });
+          }
+
+          return {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: parseFloat(product.price),
+            priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`,
+            category: category ? category.description : 'Categoria não definida',
+            image: images && images.length > 0 ? images[0].image_url : 'https://via.placeholder.com/80x80',
+            images: images ? images.map(img => img.image_url) : [],
+            stats: {
+              totalRents,
+              activeRents,
+              totalEarnings: totalEarnings.toFixed(2),
+              totalEarningsFormatted: `R$ ${totalEarnings.toFixed(2).replace('.', ',')}`
+            }
+          };
+        } catch (error) {
+          console.error(`❌ Erro ao processar produto ${product.id}:`, error);
+          return {
+            id: product.id,
+            name: product.name,
+            description: product.description,
+            price: parseFloat(product.price),
+            priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`,
+            category: 'Categoria não definida',
+            image: 'https://via.placeholder.com/80x80',
+            images: [],
+            stats: {
+              totalRents: 0,
+              activeRents: 0,
+              totalEarnings: '0.00',
+              totalEarningsFormatted: 'R$ 0,00'
+            }
+          };
+        }
+      })
+    );
+
+    return processedProducts;
+  } catch (error) {
+    console.error('❌ Erro ao buscar produtos do usuário:', error);
+    throw error;
+  }
+};
+
+export const getUserProductStats = async () => {
+  try {
+    const products = await fetchUserProducts();
+    
+    const stats = {
+      totalProducts: products.length,
+      totalRents: products.reduce((sum, product) => sum + product.stats.totalRents, 0),
+      activeRents: products.reduce((sum, product) => sum + product.stats.activeRents, 0),
+      totalEarnings: products.reduce((sum, product) => sum + parseFloat(product.stats.totalEarnings), 0),
+    };
+
+    return {
+      ...stats,
+      totalEarningsFormatted: `R$ ${stats.totalEarnings.toFixed(2).replace('.', ',')}`
+    };
+  } catch (error) {
+    console.error('❌ Erro ao obter estatísticas dos produtos:', error);
+    throw error;
   }
 }; 
