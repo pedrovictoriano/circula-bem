@@ -20,29 +20,37 @@ import useGroupStore from '../stores/groupStore';
 const GroupsScreen = () => {
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
+  const [showAllGroups, setShowAllGroups] = useState(false);
   
   // Zustand store
   const {
     groups,
+    allGroups,
     loading,
     error,
     loadUserGroups,
+    loadAllGroups,
     refreshGroups,
+    requestMembership,
     clearError
   } = useGroupStore();
 
   useEffect(() => {
     loadGroups();
-  }, []);
+  }, [showAllGroups]);
 
   const loadGroups = async () => {
     try {
-      await loadUserGroups();
+      if (showAllGroups) {
+        await loadAllGroups();
+      } else {
+        await loadUserGroups();
+      }
     } catch (error) {
       console.error('Erro ao carregar grupos:', error);
       // Não mostrar erro se for simplesmente não haver grupos
       if (!error.message?.includes('Nenhum grupo encontrado')) {
-        Alert.alert('Erro', 'Não foi possível carregar seus grupos');
+        Alert.alert('Erro', 'Não foi possível carregar os grupos');
       }
     }
   };
@@ -50,7 +58,7 @@ const GroupsScreen = () => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await refreshGroups();
+      await loadGroups();
       clearError();
     } catch (error) {
       console.error('Erro ao atualizar grupos:', error);
@@ -61,6 +69,31 @@ const GroupsScreen = () => {
 
   const handleCreateGroup = () => {
     navigation.navigate('CreateGroup');
+  };
+
+  const handleRequestMembership = async (groupId, groupName) => {
+    Alert.alert(
+      'Solicitar Participação',
+      `Deseja solicitar participação no grupo "${groupName}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Solicitar',
+          onPress: async () => {
+            try {
+              await requestMembership(groupId);
+              Alert.alert('Sucesso', 'Solicitação enviada! Aguarde a aprovação dos administradores.');
+            } catch (error) {
+              Alert.alert('Erro', error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const toggleGroupView = () => {
+    setShowAllGroups(!showAllGroups);
   };
 
   const formatMemberCount = (count) => {
@@ -119,12 +152,44 @@ const GroupsScreen = () => {
     return { uri: placeholderUrl };
   };
 
+  const getMembershipStatusBadge = (item) => {
+    if (showAllGroups) {
+      if (item.isMember && item.membershipStatus === 'ativo') {
+        return (
+          <View style={styles.memberBadge}>
+            <MaterialCommunityIcons name="check-circle" size={16} color="#10B981" />
+            <Text style={styles.memberBadgeText}>Membro</Text>
+          </View>
+        );
+      } else if (item.hasPendingRequest) {
+        return (
+          <View style={styles.pendingBadge}>
+            <MaterialCommunityIcons name="clock-outline" size={16} color="#F59E0B" />
+            <Text style={styles.pendingBadgeText}>Pendente</Text>
+          </View>
+        );
+      } else {
+        return (
+          <TouchableOpacity 
+            style={styles.joinButton}
+            onPress={() => handleRequestMembership(item.id, item.name)}
+          >
+            <MaterialCommunityIcons name="plus" size={16} color="#2563EB" />
+            <Text style={styles.joinButtonText}>Solicitar</Text>
+          </TouchableOpacity>
+        );
+      }
+    }
+    return null;
+  };
+
   const renderGroupItem = ({ item }) => {
     console.log('🎨 [renderGroupItem] =========================');
     console.log('🎨 [renderGroupItem] Renderizando grupo:', item.name);
     console.log('🎨 [renderGroupItem] ID do grupo:', item.id);
     console.log('🎨 [renderGroupItem] image_url salva:', item.image_url);
     console.log('🎨 [renderGroupItem] isAdmin:', item.isAdmin);
+    console.log('🎨 [renderGroupItem] isMember:', item.isMember);
     console.log('🎨 [renderGroupItem] memberCount:', item.memberCount);
     
     return (
@@ -171,11 +236,14 @@ const GroupsScreen = () => {
           </View>
         </View>
         
-        <MaterialCommunityIcons 
-          name="chevron-right" 
-          size={24} 
-          color="#9CA3AF" 
-        />
+        <View style={styles.groupActions}>
+          {getMembershipStatusBadge(item)}
+          <MaterialCommunityIcons 
+            name="chevron-right" 
+            size={24} 
+            color="#9CA3AF" 
+          />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -187,14 +255,27 @@ const GroupsScreen = () => {
         size={80} 
         color="#9CA3AF" 
       />
-      <Text style={styles.emptyTitle}>Nenhum grupo encontrado</Text>
-      <Text style={styles.emptySubtitle}>
-        Você ainda não faz parte de nenhum grupo. Crie um novo grupo ou solicite para participar de grupos existentes.
+      <Text style={styles.emptyTitle}>
+        {showAllGroups ? 'Nenhum grupo disponível' : 'Nenhum grupo encontrado'}
       </Text>
-      <TouchableOpacity style={styles.createGroupButton} onPress={handleCreateGroup}>
-        <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
-        <Text style={styles.createGroupButtonText}>Criar Grupo</Text>
-      </TouchableOpacity>
+      <Text style={styles.emptySubtitle}>
+        {showAllGroups 
+          ? 'Não há grupos criados na plataforma ainda. Seja o primeiro a criar um!'
+          : 'Você ainda não faz parte de nenhum grupo. Crie um novo grupo ou explore grupos existentes.'
+        }
+      </Text>
+      <View style={styles.emptyActions}>
+        <TouchableOpacity style={styles.createGroupButton} onPress={handleCreateGroup}>
+          <MaterialCommunityIcons name="plus" size={20} color="#FFF" />
+          <Text style={styles.createGroupButtonText}>Criar Grupo</Text>
+        </TouchableOpacity>
+        {!showAllGroups && (
+          <TouchableOpacity style={styles.exploreButton} onPress={toggleGroupView}>
+            <MaterialCommunityIcons name="compass" size={20} color="#2563EB" />
+            <Text style={styles.exploreButtonText}>Explorar Grupos</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 
@@ -205,16 +286,26 @@ const GroupsScreen = () => {
     </View>
   );
 
+  const getCurrentGroups = () => {
+    return showAllGroups ? allGroups : groups;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
       
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Meus Grupos</Text>
+        <Text style={styles.title}>
+          {showAllGroups ? 'Todos os Grupos' : 'Meus Grupos'}
+        </Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.searchButton}>
-            <MaterialCommunityIcons name="magnify" size={24} color="#6B7280" />
+          <TouchableOpacity style={styles.toggleButton} onPress={toggleGroupView}>
+            <MaterialCommunityIcons 
+              name={showAllGroups ? "account-group" : "compass"} 
+              size={24} 
+              color="#6B7280" 
+            />
           </TouchableOpacity>
           <TouchableOpacity style={styles.addButton} onPress={handleCreateGroup}>
             <MaterialCommunityIcons name="plus" size={24} color="#6B7280" />
@@ -223,23 +314,28 @@ const GroupsScreen = () => {
       </View>
 
       {/* Quick Stats */}
-      {!loading && groups.length > 0 && (
+      {!loading && getCurrentGroups().length > 0 && (
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{groups.length}</Text>
+            <Text style={styles.statNumber}>{getCurrentGroups().length}</Text>
             <Text style={styles.statLabel}>Grupos</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>
-              {groups.filter(g => g.isAdmin).length}
+              {showAllGroups 
+                ? getCurrentGroups().filter(g => g.isMember).length
+                : getCurrentGroups().filter(g => g.isAdmin).length
+              }
             </Text>
-            <Text style={styles.statLabel}>Admin</Text>
+            <Text style={styles.statLabel}>
+              {showAllGroups ? 'Participo' : 'Admin'}
+            </Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>
-              {groups.reduce((sum, g) => sum + g.memberCount, 0)}
+              {getCurrentGroups().reduce((sum, g) => sum + g.memberCount, 0)}
             </Text>
             <Text style={styles.statLabel}>Membros</Text>
           </View>
@@ -251,7 +347,7 @@ const GroupsScreen = () => {
         renderLoadingState()
       ) : (
         <FlatList
-          data={groups}
+          data={getCurrentGroups()}
           renderItem={renderGroupItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
@@ -290,7 +386,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  searchButton: {
+  toggleButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
@@ -420,6 +516,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 32,
   },
+  emptyActions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
   createGroupButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -434,6 +534,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  exploreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 8,
+  },
+  exploreButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   loadingState: {
     flex: 1,
     justifyContent: 'center',
@@ -444,6 +558,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 16,
+  },
+  memberBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    gap: 4,
+  },
+  memberBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    gap: 4,
+  },
+  pendingBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  joinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+    gap: 4,
+  },
+  joinButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  groupActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

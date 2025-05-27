@@ -1,15 +1,24 @@
 import { create } from 'zustand';
-import { fetchUserGroups, createGroup, uploadGroupImage, updateGroup } from '../services/groupService';
+import { 
+  fetchUserGroups, 
+  fetchAllGroups,
+  createGroup, 
+  uploadGroupImage, 
+  updateGroup,
+  requestGroupMembership
+} from '../services/groupService';
 
 const useGroupStore = create((set, get) => ({
   // State
   groups: [],
+  allGroups: [],
   loading: false,
   error: null,
   selectedGroup: null,
 
   // Actions
   setGroups: (groups) => set({ groups }),
+  setAllGroups: (allGroups) => set({ allGroups }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   setSelectedGroup: (group) => set({ selectedGroup: group }),
@@ -21,6 +30,41 @@ const useGroupStore = create((set, get) => ({
       const groups = await fetchUserGroups();
       set({ groups, loading: false });
       return groups;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  // Fetch all groups (including ones user is not a member of)
+  loadAllGroups: async () => {
+    set({ loading: true, error: null });
+    try {
+      const allGroups = await fetchAllGroups();
+      set({ allGroups, loading: false });
+      return allGroups;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  // Request group membership
+  requestMembership: async (groupId) => {
+    set({ loading: true, error: null });
+    try {
+      const result = await requestGroupMembership(groupId);
+      
+      // Update the specific group in allGroups to reflect the pending request
+      const currentAllGroups = get().allGroups;
+      const updatedAllGroups = currentAllGroups.map(group => 
+        group.id === groupId 
+          ? { ...group, hasPendingRequest: true, membershipStatus: 'pendente' }
+          : group
+      );
+      
+      set({ allGroups: updatedAllGroups, loading: false });
+      return result;
     } catch (error) {
       set({ error: error.message, loading: false });
       throw error;
@@ -112,12 +156,25 @@ const useGroupStore = create((set, get) => ({
     }
   },
 
+  // Refresh all groups
+  refreshAllGroups: async () => {
+    try {
+      const allGroups = await fetchAllGroups();
+      set({ allGroups });
+      return allGroups;
+    } catch (error) {
+      set({ error: error.message });
+      throw error;
+    }
+  },
+
   // Clear error
   clearError: () => set({ error: null }),
 
   // Reset store
   reset: () => set({
     groups: [],
+    allGroups: [],
     loading: false,
     error: null,
     selectedGroup: null,

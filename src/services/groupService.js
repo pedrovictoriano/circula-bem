@@ -219,6 +219,113 @@ export const fetchUserGroups = async () => {
   }
 };
 
+// Buscar todos os grupos (incluindo os que o usuário não participa)
+export const fetchAllGroups = async () => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('🔍 Buscando todos os grupos para usuário:', userId);
+
+    // Buscar todos os grupos
+    const allGroups = await getTable('groups', 'select=*');
+    
+    if (!allGroups || !Array.isArray(allGroups) || allGroups.length === 0) {
+      console.log('⚠️ Nenhum grupo encontrado');
+      return [];
+    }
+
+    // Buscar todas as memberships do usuário
+    const userMembershipsQuery = `user_id=eq.${userId}&select=group_id,role,status`;
+    const userMemberships = await getTable('group_members', userMembershipsQuery);
+
+    // Enriquecer dados dos grupos com informações de membership
+    const enrichedGroups = await Promise.all(
+      allGroups.map(async (group) => {
+        const membership = userMemberships?.find(m => m.group_id === group.id);
+        
+        // Contar membros ativos do grupo
+        const memberCountQuery = `group_id=eq.${group.id}&status=eq.ativo&select=id`;
+        const members = await getTable('group_members', memberCountQuery);
+        const memberCount = members ? members.length : 0;
+
+        return {
+          ...group,
+          isMember: !!membership,
+          isAdmin: membership?.role === 'admin',
+          membershipStatus: membership?.status || null,
+          memberCount: memberCount,
+          lastActivity: group.created_at,
+          hasPendingRequest: membership?.status === 'pendente'
+        };
+      })
+    );
+
+    console.log(`✅ Encontrados ${enrichedGroups.length} grupos (todos)`);
+    return enrichedGroups;
+  } catch (error) {
+    console.error('❌ Erro ao buscar todos os grupos:', error);
+    throw new Error(error.message || 'Falha ao buscar grupos');
+  }
+};
+
+// Solicitar participação em um grupo
+export const requestGroupMembership = async (groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('📝 Solicitando participação no grupo:', groupId, 'para usuário:', userId);
+
+    // Verificar se já existe uma solicitação ou membership
+    const existingMembershipQuery = `group_id=eq.${groupId}&user_id=eq.${userId}`;
+    const existingMemberships = await getTable('group_members', existingMembershipQuery);
+    
+    if (existingMemberships && existingMemberships.length > 0) {
+      const existing = existingMemberships[0];
+      if (existing.status === 'ativo') {
+        throw new Error('Você já é membro deste grupo');
+      } else if (existing.status === 'pendente') {
+        throw new Error('Você já possui uma solicitação pendente para este grupo');
+      }
+    }
+
+    // Buscar um admin do grupo para usar como "convidante"
+    const adminQuery = `group_id=eq.${groupId}&role=eq.admin&status=eq.ativo&select=user_id&limit=1`;
+    const admins = await getTable('group_members', adminQuery);
+    
+    if (!admins || admins.length === 0) {
+      throw new Error('Grupo sem administradores ativos');
+    }
+
+    const invitedBy = admins[0].user_id;
+
+    // Criar solicitação de membership
+    const membershipRequest = {
+      id: uuidv4(),
+      group_id: groupId,
+      user_id: userId,
+      role: 'membro',
+      status: 'pendente',
+      invited_by: invitedBy,
+      joined_at: new Date().toISOString(),
+      created_at: new Date().toISOString()
+    };
+
+    const result = await insertIntoTable('group_members', membershipRequest);
+    console.log('✅ Solicitação de participação criada:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erro ao solicitar participação no grupo:', error);
+    throw new Error(error.message || 'Falha ao solicitar participação no grupo');
+  }
+};
+
 // Buscar detalhes de um grupo específico
 export const fetchGroupById = async (groupId) => {
   try {

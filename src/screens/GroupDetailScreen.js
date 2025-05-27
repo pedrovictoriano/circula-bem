@@ -19,7 +19,8 @@ import { SUPABASE_CONFIG } from '../config/env';
 import { 
   fetchGroupById, 
   fetchGroupProducts, 
-  checkUserMembership 
+  checkUserMembership,
+  requestGroupMembership
 } from '../services/groupService';
 import ProfileImage from '../components/ProfileImage';
 
@@ -34,6 +35,7 @@ const GroupDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('produtos'); // 'produtos' ou 'membros'
+  const [requestingMembership, setRequestingMembership] = useState(false);
 
   useEffect(() => {
     loadGroupDetails();
@@ -44,15 +46,19 @@ const GroupDetailScreen = () => {
       setLoading(true);
       
       // Carregar dados em paralelo
-      const [groupData, productsData, membershipData] = await Promise.all([
+      const [groupData, membershipData] = await Promise.all([
         fetchGroupById(groupId),
-        fetchGroupProducts(groupId),
         checkUserMembership(groupId)
       ]);
 
       setGroup(groupData);
-      setProducts(productsData);
       setMembership(membershipData);
+
+      // Só carregar produtos se o usuário for membro ativo
+      if (membershipData.isMember && membershipData.isActive) {
+        const productsData = await fetchGroupProducts(groupId);
+        setProducts(productsData);
+      }
     } catch (error) {
       console.error('❌ Erro ao carregar detalhes do grupo:', error);
       Alert.alert('Erro', 'Não foi possível carregar os detalhes do grupo');
@@ -97,6 +103,38 @@ const GroupDetailScreen = () => {
       console.error('❌ Erro ao copiar link:', error);
       Alert.alert('Erro', 'Não foi possível copiar o link');
     }
+  };
+
+  const handleRequestMembership = async () => {
+    Alert.alert(
+      'Solicitar Participação',
+      `Deseja solicitar participação no grupo "${group?.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Solicitar',
+          onPress: async () => {
+            try {
+              setRequestingMembership(true);
+              await requestGroupMembership(groupId);
+              
+              // Atualizar o estado de membership local
+              setMembership(prev => ({
+                ...prev,
+                isMember: true,
+                status: 'pendente'
+              }));
+              
+              Alert.alert('Sucesso', 'Solicitação enviada! Aguarde a aprovação dos administradores.');
+            } catch (error) {
+              Alert.alert('Erro', error.message);
+            } finally {
+              setRequestingMembership(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getGroupImage = (imageUrl) => {
@@ -301,8 +339,8 @@ const GroupDetailScreen = () => {
           </View>
 
           {/* Action Buttons */}
-          {membership.isMember && (
-            <View style={styles.actionButtons}>
+          <View style={styles.actionButtons}>
+            {membership.isMember && membership.isActive && (
               <TouchableOpacity 
                 style={styles.inviteButton}
                 onPress={handleCopyInviteLink}
@@ -310,69 +348,117 @@ const GroupDetailScreen = () => {
                 <MaterialCommunityIcons name="link" size={20} color="#2563EB" />
                 <Text style={styles.inviteButtonText}>Copiar Link de Convite</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+            
+            {membership.isMember && membership.status === 'pendente' && (
+              <View style={styles.pendingContainer}>
+                <MaterialCommunityIcons name="clock-outline" size={20} color="#F59E0B" />
+                <Text style={styles.pendingText}>Solicitação pendente</Text>
+              </View>
+            )}
+            
+            {!membership.isMember && (
+              <TouchableOpacity 
+                style={[styles.joinButton, requestingMembership && styles.joinButtonDisabled]}
+                onPress={handleRequestMembership}
+                disabled={requestingMembership}
+              >
+                {requestingMembership ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <MaterialCommunityIcons name="account-plus" size={20} color="#FFF" />
+                )}
+                <Text style={styles.joinButtonText}>
+                  {requestingMembership ? 'Solicitando...' : 'Solicitar Participação'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* Tabs */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'produtos' && styles.activeTab]}
-            onPress={() => setActiveTab('produtos')}
-          >
-            <MaterialCommunityIcons 
-              name="package-variant" 
-              size={20} 
-              color={activeTab === 'produtos' ? '#2563EB' : '#6B7280'} 
-            />
-            <Text style={[
-              styles.tabText, 
-              activeTab === 'produtos' && styles.activeTabText
-            ]}>
-              Produtos ({products.length})
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'membros' && styles.activeTab]}
-            onPress={() => setActiveTab('membros')}
-          >
-            <MaterialCommunityIcons 
-              name="account-group" 
-              size={20} 
-              color={activeTab === 'membros' ? '#2563EB' : '#6B7280'} 
-            />
-            <Text style={[
-              styles.tabText, 
-              activeTab === 'membros' && styles.activeTabText
-            ]}>
-              Membros ({group.memberCount})
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Tabs - Only show for active members */}
+        {membership.isMember && membership.isActive && (
+          <View style={styles.tabContainer}>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'produtos' && styles.activeTab]}
+              onPress={() => setActiveTab('produtos')}
+            >
+              <MaterialCommunityIcons 
+                name="package-variant" 
+                size={20} 
+                color={activeTab === 'produtos' ? '#2563EB' : '#6B7280'} 
+              />
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'produtos' && styles.activeTabText
+              ]}>
+                Produtos ({products.length})
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'membros' && styles.activeTab]}
+              onPress={() => setActiveTab('membros')}
+            >
+              <MaterialCommunityIcons 
+                name="account-group" 
+                size={20} 
+                color={activeTab === 'membros' ? '#2563EB' : '#6B7280'} 
+              />
+              <Text style={[
+                styles.tabText, 
+                activeTab === 'membros' && styles.activeTabText
+              ]}>
+                Membros ({group.memberCount})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Content */}
-        <View style={styles.contentContainer}>
-          {activeTab === 'produtos' ? (
-            <FlatList
-              data={products}
-              renderItem={renderProductItem}
-              keyExtractor={(item) => item.id}
-              ListEmptyComponent={renderEmptyProducts}
-              scrollEnabled={false}
-              showsVerticalScrollIndicator={false}
+        {membership.isMember && membership.isActive ? (
+          <View style={styles.contentContainer}>
+            {activeTab === 'produtos' ? (
+              <FlatList
+                data={products}
+                renderItem={renderProductItem}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={renderEmptyProducts}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : (
+              <FlatList
+                data={group.members}
+                renderItem={renderMemberItem}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={renderEmptyMembers}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
+          </View>
+        ) : (
+          <View style={styles.nonMemberContent}>
+            <MaterialCommunityIcons 
+              name={membership.status === 'pendente' ? "clock-outline" : "lock-outline"} 
+              size={60} 
+              color="#9CA3AF" 
             />
-          ) : (
-            <FlatList
-              data={group.members}
-              renderItem={renderMemberItem}
-              keyExtractor={(item) => item.id}
-              ListEmptyComponent={renderEmptyMembers}
-              scrollEnabled={false}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </View>
+            <Text style={styles.nonMemberTitle}>
+              {membership.status === 'pendente' 
+                ? 'Aguardando Aprovação' 
+                : 'Acesso Restrito'
+              }
+            </Text>
+            <Text style={styles.nonMemberSubtitle}>
+              {membership.status === 'pendente'
+                ? 'Sua solicitação está sendo analisada pelos administradores do grupo.'
+                : 'Apenas membros do grupo podem ver produtos e outros membros.'
+              }
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -689,6 +775,57 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptySubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+    lineHeight: 20,
+  },
+  pendingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    padding: 12,
+    borderRadius: 8,
+  },
+  pendingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563EB',
+    marginLeft: 8,
+  },
+  joinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+  },
+  joinButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  joinButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  nonMemberContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  nonMemberTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  nonMemberSubtitle: {
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
