@@ -5,13 +5,17 @@ import {
   createGroup, 
   uploadGroupImage, 
   updateGroup,
-  requestGroupMembership
+  requestGroupMembership,
+  fetchPendingMemberships,
+  approveGroupMembership,
+  rejectGroupMembership
 } from '../services/groupService';
 
 const useGroupStore = create((set, get) => ({
   // State
   groups: [],
   allGroups: [],
+  pendingMemberships: [],
   loading: false,
   error: null,
   selectedGroup: null,
@@ -19,6 +23,7 @@ const useGroupStore = create((set, get) => ({
   // Actions
   setGroups: (groups) => set({ groups }),
   setAllGroups: (allGroups) => set({ allGroups }),
+  setPendingMemberships: (pendingMemberships) => set({ pendingMemberships }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   setSelectedGroup: (group) => set({ selectedGroup: group }),
@@ -175,10 +180,60 @@ const useGroupStore = create((set, get) => ({
   reset: () => set({
     groups: [],
     allGroups: [],
+    pendingMemberships: [],
     loading: false,
     error: null,
     selectedGroup: null,
   }),
+
+  // Fetch pending memberships for a group (admin only)
+  loadPendingMemberships: async (groupId) => {
+    set({ loading: true, error: null });
+    try {
+      const pendingMemberships = await fetchPendingMemberships(groupId);
+      set({ pendingMemberships, loading: false });
+      return pendingMemberships;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  // Approve membership request
+  approveMembership: async (membershipId, groupId) => {
+    set({ loading: true, error: null });
+    try {
+      await approveGroupMembership(membershipId, groupId);
+      
+      // Remove from pending memberships list
+      const currentPending = get().pendingMemberships;
+      const updatedPending = currentPending.filter(m => m.id !== membershipId);
+      set({ pendingMemberships: updatedPending, loading: false });
+      
+      return true;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  // Reject membership request
+  rejectMembership: async (membershipId, groupId) => {
+    set({ loading: true, error: null });
+    try {
+      await rejectGroupMembership(membershipId, groupId);
+      
+      // Remove from pending memberships list
+      const currentPending = get().pendingMemberships;
+      const updatedPending = currentPending.filter(m => m.id !== membershipId);
+      set({ pendingMemberships: updatedPending, loading: false });
+      
+      return true;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
 }));
 
 export default useGroupStore; 

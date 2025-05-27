@@ -2,7 +2,7 @@
 
 ## Resumo das Implementações
 
-Este documento descreve as funcionalidades implementadas para permitir que todos os usuários vejam todos os grupos e solicitem participação em grupos dos quais não fazem parte.
+Este documento descreve as funcionalidades implementadas para permitir que todos os usuários vejam todos os grupos e solicitem participação em grupos dos quais não fazem parte, além do gerenciamento de solicitações por administradores.
 
 ## 🚀 Funcionalidades Implementadas
 
@@ -19,11 +19,18 @@ Este documento descreve as funcionalidades implementadas para permitir que todos
 #### **Novos Serviços (groupService.js)**
 - `fetchAllGroups()`: Busca todos os grupos com informações de membership do usuário
 - `requestGroupMembership()`: Permite solicitar participação em um grupo
+- `fetchPendingMemberships()`: Busca solicitações pendentes (apenas para admins)
+- `approveGroupMembership()`: Aprova solicitação de participação (apenas para admins)
+- `rejectGroupMembership()`: Nega solicitação de participação (apenas para admins)
 
 #### **Store Atualizado (groupStore.js)**
 - Novo estado `allGroups` para armazenar todos os grupos
+- Novo estado `pendingMemberships` para solicitações pendentes
 - Função `loadAllGroups()` para carregar todos os grupos
 - Função `requestMembership()` para solicitar participação
+- Função `loadPendingMemberships()` para carregar solicitações pendentes
+- Função `approveMembership()` para aprovar solicitações
+- Função `rejectMembership()` para negar solicitações
 
 ### 2. Solicitação de Participação
 
@@ -40,42 +47,65 @@ Este documento descreve as funcionalidades implementadas para permitir que todos
 - Busca admin do grupo para usar como "convidante"
 - Tratamento de erros com mensagens em português
 
-### 3. Tela de Detalhes do Grupo Restrita
+### 3. Gerenciamento de Solicitações (Administradores)
+
+#### **Interface de Administração**
+- **Aba "Solicitações"**: Aparece automaticamente para admins quando há solicitações pendentes
+- **Badge no Header**: Indica o número de solicitações pendentes
+- **Auto-Switch**: Troca automaticamente para aba de solicitações quando chegam novas
+- **Ações Rápidas**: Botões de aprovar (✓) e negar (✗) para cada solicitação
+
+#### **Fluxo de Aprovação**
+1. Admin recebe notificação visual de nova solicitação
+2. Acessa aba "Solicitações" no grupo
+3. Vê lista de usuários com solicitações pendentes
+4. Aprova ou nega cada solicitação individualmente
+5. Sistema atualiza status e remove da lista de pendentes
+
+#### **Funcionalidades para Admins**
+- **Visualização de Solicitantes**: Nome, foto e dados dos usuários
+- **Confirmação de Ações**: Alerts de confirmação antes de aprovar/negar
+- **Feedback Imediato**: Mensagens de sucesso após ações
+- **Atualização Automática**: Contadores e listas atualizados em tempo real
+
+### 4. Tela de Detalhes do Grupo Restrita
 
 #### **GroupDetailScreen.js**
 - **Acesso Baseado em Membership**:
   - **Membros Ativos**: Veem todas as informações (produtos, membros, etc.)
   - **Solicitação Pendente**: Veem informações básicas + status de pendência
   - **Não Membros**: Veem informações básicas + botão de solicitar participação
+  - **Administradores**: Acesso completo + aba de gerenciamento de solicitações
 
 #### **Interface Adaptativa**
-- Tabs (Produtos/Membros) só aparecem para membros ativos
+- Tabs (Produtos/Membros/Solicitações) só aparecem para membros ativos
+- Aba de Solicitações só para admins com solicitações pendentes
 - Botões de ação mudam baseado no status:
   - Membro ativo: "Copiar Link de Convite"
   - Pendente: "Solicitação pendente"
   - Não membro: "Solicitar Participação"
-
-#### **Tela de Acesso Restrito**
-- Ícone e mensagem explicativa para usuários sem acesso
-- Diferenciação visual entre "Aguardando Aprovação" e "Acesso Restrito"
+  - Admin: Todas as opções + gerenciamento de solicitações
 
 ## 🎨 Melhorias de UX
 
 ### Indicadores Visuais
 - **Badges coloridos** para status de membership
-- **Ícones intuitivos** (check-circle, clock-outline, plus)
+- **Ícones intuitivos** (check-circle, clock-outline, plus, account-clock)
 - **Estados de loading** durante solicitações
 - **Feedback visual** imediato após ações
+- **Badge no header** para solicitações pendentes
 
 ### Navegação Intuitiva
 - **Toggle fácil** entre visualizações
 - **Botão de explorar** no estado vazio
 - **Estatísticas contextuais** que mudam com a visualização
+- **Auto-switch** para aba de solicitações
 
 ### Mensagens em Português
 - Todas as mensagens de erro e sucesso em PT-BR
 - Textos explicativos claros
 - Confirmações antes de ações importantes
+- Feedback específico para cada ação
 
 ## 🔧 Estrutura Técnica
 
@@ -88,8 +118,9 @@ Utiliza a estrutura existente da tabela `group_members`:
 ### Estados do Zustand
 ```javascript
 {
-  groups: [],        // Grupos do usuário
-  allGroups: [],     // Todos os grupos
+  groups: [],                // Grupos do usuário
+  allGroups: [],            // Todos os grupos
+  pendingMemberships: [],   // Solicitações pendentes (admins)
   loading: false,
   error: null
 }
@@ -100,6 +131,7 @@ Utiliza a estrutura existente da tabela `group_members`:
 2. **Enriquecimento**: Adiciona flags `isMember`, `hasPendingRequest`, etc.
 3. **Renderização**: Interface se adapta baseada nos flags
 4. **Ações**: Solicitações atualizam estado local + backend
+5. **Gerenciamento**: Admins podem aprovar/negar solicitações
 
 ## 📱 Experiência do Usuário
 
@@ -120,6 +152,13 @@ Utiliza a estrutura existente da tabela `group_members`:
 2. Ao acessar o grupo, vê status "Aguardando Aprovação"
 3. Não pode ver produtos/membros até aprovação
 
+### Cenário 4: Administrador Gerenciando Solicitações
+1. Recebe indicador visual de nova solicitação
+2. Acessa grupo e vê aba "Solicitações" destacada
+3. Revisa informações do solicitante
+4. Aprova ou nega com confirmação
+5. Vê feedback imediato da ação
+
 ## ✅ Funcionalidades Testadas
 
 - [x] Toggle entre "Meus Grupos" e "Todos os Grupos"
@@ -130,17 +169,25 @@ Utiliza a estrutura existente da tabela `group_members`:
 - [x] Estados de loading e erro
 - [x] Mensagens em português
 - [x] Sintaxe JavaScript válida
+- [x] **NOVO**: Aba de solicitações para admins
+- [x] **NOVO**: Aprovação de solicitações
+- [x] **NOVO**: Negação de solicitações
+- [x] **NOVO**: Indicadores visuais para admins
+- [x] **NOVO**: Auto-switch para aba de solicitações
+- [x] **NOVO**: Validações de permissão para admins
 
 ## 🔄 Próximos Passos (Sugestões)
 
-1. **Notificações**: Avisar admins sobre novas solicitações
-2. **Aprovação**: Interface para admins aprovarem/negarem solicitações
+1. **Notificações Push**: Avisar admins sobre novas solicitações em tempo real
+2. **Histórico**: Log de aprovações/negações para auditoria
 3. **Busca**: Filtro para encontrar grupos específicos
 4. **Categorias**: Organizar grupos por categorias
 5. **Convites**: Sistema de convites por link ou email
+6. **Bulk Actions**: Aprovar/negar múltiplas solicitações de uma vez
+7. **Motivos**: Campo opcional para justificar negação de solicitações
 
 ---
 
-**Status**: ✅ Implementado e funcional
+**Status**: ✅ Implementado e funcional (incluindo gerenciamento por admins)
 **Compatibilidade**: React Native + Supabase
 **Idioma**: Português (PT-BR) 

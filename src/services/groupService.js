@@ -326,6 +326,138 @@ export const requestGroupMembership = async (groupId) => {
   }
 };
 
+// Buscar solicitações pendentes de um grupo (apenas para admins)
+export const fetchPendingMemberships = async (groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('🔍 Buscando solicitações pendentes do grupo:', groupId);
+
+    // Verificar se o usuário é admin do grupo
+    const adminCheck = await checkUserMembership(groupId, userId);
+    if (!adminCheck.isAdmin) {
+      throw new Error('Apenas administradores podem ver solicitações pendentes');
+    }
+
+    // Buscar memberships pendentes
+    const pendingQuery = `group_id=eq.${groupId}&status=eq.pendente&select=*`;
+    const pendingMemberships = await getTable('group_members', pendingQuery);
+    
+    if (!pendingMemberships || pendingMemberships.length === 0) {
+      console.log('⚠️ Nenhuma solicitação pendente encontrada');
+      return [];
+    }
+
+    // Para cada solicitação, buscar informações do usuário
+    const enrichedPendingMemberships = await Promise.all(
+      pendingMemberships.map(async (membership) => {
+        try {
+          const userQuery = `user_id=eq.${membership.user_id}&select=first_name,last_name,image_url,registration_number`;
+          const users = await getTable('user_extra_information', userQuery);
+          const user = users && users.length > 0 ? users[0] : null;
+          
+          return {
+            ...membership,
+            user: user ? {
+              first_name: user.first_name,
+              last_name: user.last_name,
+              full_name: `${user.first_name} ${user.last_name}`,
+              image_url: user.image_url,
+              registration_number: user.registration_number
+            } : {
+              first_name: 'Usuário',
+              last_name: 'Desconhecido',
+              full_name: 'Usuário Desconhecido',
+              image_url: null,
+              registration_number: 'N/A'
+            }
+          };
+        } catch (error) {
+          console.error('❌ Erro ao buscar dados do solicitante:', error);
+          return {
+            ...membership,
+            user: {
+              first_name: 'Usuário',
+              last_name: 'Desconhecido',
+              full_name: 'Usuário Desconhecido',
+              image_url: null,
+              registration_number: 'N/A'
+            }
+          };
+        }
+      })
+    );
+
+    console.log(`✅ Encontradas ${enrichedPendingMemberships.length} solicitações pendentes`);
+    return enrichedPendingMemberships;
+  } catch (error) {
+    console.error('❌ Erro ao buscar solicitações pendentes:', error);
+    throw new Error(error.message || 'Falha ao buscar solicitações pendentes');
+  }
+};
+
+// Aprovar solicitação de participação (apenas para admins)
+export const approveGroupMembership = async (membershipId, groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('✅ Aprovando solicitação de participação:', membershipId);
+
+    // Verificar se o usuário é admin do grupo
+    const adminCheck = await checkUserMembership(groupId, userId);
+    if (!adminCheck.isAdmin) {
+      throw new Error('Apenas administradores podem aprovar solicitações');
+    }
+
+    // Atualizar status para 'ativo'
+    const updateData = {
+      status: 'ativo',
+      joined_at: new Date().toISOString()
+    };
+
+    const result = await updateTableById('group_members', membershipId, updateData);
+    console.log('✅ Solicitação aprovada:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erro ao aprovar solicitação:', error);
+    throw new Error(error.message || 'Falha ao aprovar solicitação');
+  }
+};
+
+// Negar solicitação de participação (apenas para admins)
+export const rejectGroupMembership = async (membershipId, groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('❌ Negando solicitação de participação:', membershipId);
+
+    // Verificar se o usuário é admin do grupo
+    const adminCheck = await checkUserMembership(groupId, userId);
+    if (!adminCheck.isAdmin) {
+      throw new Error('Apenas administradores podem negar solicitações');
+    }
+
+    // Remover a solicitação completamente
+    const result = await deleteFromTableById('group_members', membershipId);
+    console.log('✅ Solicitação negada e removida:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erro ao negar solicitação:', error);
+    throw new Error(error.message || 'Falha ao negar solicitação');
+  }
+};
+
 // Buscar detalhes de um grupo específico
 export const fetchGroupById = async (groupId) => {
   try {

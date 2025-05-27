@@ -22,6 +22,7 @@ import {
   checkUserMembership,
   requestGroupMembership
 } from '../services/groupService';
+import useGroupStore from '../stores/groupStore';
 import ProfileImage from '../components/ProfileImage';
 
 const GroupDetailScreen = () => {
@@ -37,9 +38,28 @@ const GroupDetailScreen = () => {
   const [activeTab, setActiveTab] = useState('produtos'); // 'produtos' ou 'membros'
   const [requestingMembership, setRequestingMembership] = useState(false);
 
+  // Zustand store for membership management
+  const {
+    pendingMemberships,
+    loadPendingMemberships,
+    approveMembership,
+    rejectMembership,
+    clearError
+  } = useGroupStore();
+
   useEffect(() => {
     loadGroupDetails();
   }, [groupId]);
+
+  // Auto-switch to pending requests tab when there are new requests for admins
+  useEffect(() => {
+    if (membership.isAdmin && pendingMemberships.length > 0 && activeTab !== 'solicitacoes') {
+      // Only auto-switch if we're not already viewing products or members content
+      if (activeTab === 'produtos' || activeTab === 'membros') {
+        setActiveTab('solicitacoes');
+      }
+    }
+  }, [pendingMemberships.length, membership.isAdmin]);
 
   const loadGroupDetails = async () => {
     try {
@@ -59,6 +79,15 @@ const GroupDetailScreen = () => {
         const productsData = await fetchGroupProducts(groupId);
         setProducts(productsData);
       }
+
+      // Se for admin, carregar solicitações pendentes
+      if (membershipData.isAdmin) {
+        try {
+          await loadPendingMemberships(groupId);
+        } catch (error) {
+          console.log('Nenhuma solicitação pendente ou erro ao carregar:', error.message);
+        }
+      }
     } catch (error) {
       console.error('❌ Erro ao carregar detalhes do grupo:', error);
       Alert.alert('Erro', 'Não foi possível carregar os detalhes do grupo');
@@ -71,6 +100,7 @@ const GroupDetailScreen = () => {
     setRefreshing(true);
     try {
       await loadGroupDetails();
+      clearError();
     } catch (error) {
       console.error('❌ Erro ao atualizar:', error);
     } finally {
@@ -130,6 +160,51 @@ const GroupDetailScreen = () => {
               Alert.alert('Erro', error.message);
             } finally {
               setRequestingMembership(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleApproveMembership = async (membershipId, userName) => {
+    Alert.alert(
+      'Aprovar Solicitação',
+      `Deseja aprovar a solicitação de "${userName}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Aprovar',
+          onPress: async () => {
+            try {
+              await approveMembership(membershipId, groupId);
+              Alert.alert('Sucesso', `${userName} foi aprovado(a) no grupo!`);
+              // Recarregar dados do grupo para atualizar contadores
+              await loadGroupDetails();
+            } catch (error) {
+              Alert.alert('Erro', error.message);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleRejectMembership = async (membershipId, userName) => {
+    Alert.alert(
+      'Negar Solicitação',
+      `Deseja negar a solicitação de "${userName}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Negar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await rejectMembership(membershipId, groupId);
+              Alert.alert('Solicitação Negada', `A solicitação de ${userName} foi negada.`);
+            } catch (error) {
+              Alert.alert('Erro', error.message);
             }
           }
         }
@@ -235,6 +310,39 @@ const GroupDetailScreen = () => {
     </View>
   );
 
+  const renderPendingMembershipItem = ({ item }) => (
+    <View style={styles.pendingMembershipCard}>
+      <ProfileImage 
+        imageUrl={item.user.image_url} 
+        size={50}
+        style={styles.memberImage}
+      />
+      <View style={styles.memberInfo}>
+        <Text style={styles.memberName}>{item.user.full_name}</Text>
+        <Text style={styles.memberRegistration}>
+          {item.user.registration_number}
+        </Text>
+        <Text style={styles.memberDate}>
+          Solicitou em {new Date(item.created_at).toLocaleDateString('pt-BR')}
+        </Text>
+      </View>
+      <View style={styles.pendingActions}>
+        <TouchableOpacity 
+          style={styles.approveButton}
+          onPress={() => handleApproveMembership(item.id, item.user.full_name)}
+        >
+          <MaterialCommunityIcons name="check" size={20} color="#FFF" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.rejectButton}
+          onPress={() => handleRejectMembership(item.id, item.user.full_name)}
+        >
+          <MaterialCommunityIcons name="close" size={20} color="#FFF" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const renderEmptyProducts = () => (
     <View style={styles.emptyState}>
       <MaterialCommunityIcons name="package-variant" size={60} color="#9CA3AF" />
@@ -251,6 +359,16 @@ const GroupDetailScreen = () => {
       <Text style={styles.emptyTitle}>Nenhum membro encontrado</Text>
       <Text style={styles.emptySubtitle}>
         Os membros do grupo aparecerão aqui
+      </Text>
+    </View>
+  );
+
+  const renderEmptyPendingMemberships = () => (
+    <View style={styles.emptyState}>
+      <MaterialCommunityIcons name="account-clock" size={60} color="#9CA3AF" />
+      <Text style={styles.emptyTitle}>Nenhuma solicitação pendente</Text>
+      <Text style={styles.emptySubtitle}>
+        As solicitações de participação aparecerão aqui
       </Text>
     </View>
   );
@@ -298,9 +416,19 @@ const GroupDetailScreen = () => {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes do Grupo</Text>
-        <TouchableOpacity style={styles.headerButton}>
-          <MaterialCommunityIcons name="dots-vertical" size={24} color="#111827" />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.headerButton}>
+            <MaterialCommunityIcons name="dots-vertical" size={24} color="#111827" />
+            {/* Badge para solicitações pendentes */}
+            {membership.isAdmin && pendingMemberships.length > 0 && (
+              <View style={styles.pendingBadgeHeader}>
+                <Text style={styles.pendingBadgeHeaderText}>
+                  {pendingMemberships.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -412,6 +540,26 @@ const GroupDetailScreen = () => {
                 Membros ({group.memberCount})
               </Text>
             </TouchableOpacity>
+
+            {/* Aba de Solicitações - só para admins com solicitações pendentes */}
+            {membership.isAdmin && pendingMemberships.length > 0 && (
+              <TouchableOpacity 
+                style={[styles.tab, activeTab === 'solicitacoes' && styles.activeTab]}
+                onPress={() => setActiveTab('solicitacoes')}
+              >
+                <MaterialCommunityIcons 
+                  name="account-clock" 
+                  size={20} 
+                  color={activeTab === 'solicitacoes' ? '#2563EB' : '#6B7280'} 
+                />
+                <Text style={[
+                  styles.tabText, 
+                  activeTab === 'solicitacoes' && styles.activeTabText
+                ]}>
+                  Solicitações ({pendingMemberships.length})
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -427,7 +575,7 @@ const GroupDetailScreen = () => {
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />
-            ) : (
+            ) : activeTab === 'membros' ? (
               <FlatList
                 data={group.members}
                 renderItem={renderMemberItem}
@@ -436,7 +584,16 @@ const GroupDetailScreen = () => {
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
               />
-            )}
+            ) : activeTab === 'solicitacoes' ? (
+              <FlatList
+                data={pendingMemberships}
+                renderItem={renderPendingMembershipItem}
+                keyExtractor={(item) => item.id}
+                ListEmptyComponent={renderEmptyPendingMemberships}
+                scrollEnabled={false}
+                showsVerticalScrollIndicator={false}
+              />
+            ) : null}
           </View>
         ) : (
           <View style={styles.nonMemberContent}>
@@ -487,6 +644,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pendingBadgeHeader: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  pendingBadgeHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   scrollContent: {
     flex: 1,
@@ -831,6 +1004,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: 40,
     lineHeight: 20,
+  },
+  pendingMembershipCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  pendingActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  approveButton: {
+    backgroundColor: '#10B981',
+    padding: 8,
+    borderRadius: 8,
+  },
+  rejectButton: {
+    backgroundColor: '#EF4444',
+    padding: 8,
+    borderRadius: 8,
   },
 });
 
