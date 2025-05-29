@@ -133,8 +133,7 @@ const GroupDetailScreen = () => {
               onPress: async () => {
                 try {
                   await Share.share({
-                    message: `Convite para o grupo "${group.name}":\n\n${group.invite_link}`,
-                    url: group.invite_link,
+                    message: `Olá! Você foi convidado(a) para participar do grupo "${group.name}" no CirculaBem.\n\nUse este link para solicitar participação:\n${group.invite_link}`,
                   });
                 } catch (shareError) {
                   Alert.alert('Erro', 'Não foi possível compartilhar');

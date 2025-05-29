@@ -40,6 +40,28 @@ const JoinGroupByLinkScreen = () => {
     clearError();
   }, []);
 
+  // Função para extrair handle de qualquer texto que contenha um link
+  const extractHandleFromText = (text) => {
+    if (!text || typeof text !== 'string') return text;
+
+    // Buscar por URLs no texto
+    const urlRegex = /https?:\/\/[^\s]+|circulabem\.app\/[^\s]+|groups\/join\/[^\s]+/gi;
+    const urls = text.match(urlRegex);
+    
+    if (urls && urls.length > 0) {
+      // Pegar a primeira URL encontrada
+      const url = urls[0];
+      
+      // Extrair o último segmento do path (que é o handle)
+      const pathMatch = url.match(/\/([^\/\s?#]+)(?:\?[^\s]*)?(?:#[^\s]*)?$/);
+      if (pathMatch && pathMatch[1]) {
+        return pathMatch[1];
+      }
+    }
+    
+    return text.trim();
+  };
+
   const handleProcessLink = async () => {
     if (!inviteLink.trim()) {
       Alert.alert('Atenção', 'Por favor, insira um link de convite.');
@@ -47,7 +69,9 @@ const JoinGroupByLinkScreen = () => {
     }
 
     try {
-      await processInviteLink(inviteLink.trim());
+      // Extrair automaticamente o handle do texto inserido
+      const extractedHandle = extractHandleFromText(inviteLink.trim());
+      await processInviteLink(extractedHandle);
     } catch (error) {
       Alert.alert('Erro', error.message);
     }
@@ -66,7 +90,9 @@ const JoinGroupByLinkScreen = () => {
           onPress: async () => {
             try {
               setIsProcessing(true);
-              const result = await joinByInvite(inviteLink.trim());
+              // Usar o handle extraído
+              const extractedHandle = extractHandleFromText(inviteLink.trim());
+              const result = await joinByInvite(extractedHandle);
               
               Alert.alert(
                 'Sucesso!',
@@ -165,18 +191,18 @@ const JoinGroupByLinkScreen = () => {
             <MaterialCommunityIcons name="link" size={48} color="#2563EB" />
             <Text style={styles.instructionTitle}>Link de Convite</Text>
             <Text style={styles.instructionText}>
-              Cole aqui o link de convite que você recebeu para solicitar participação no grupo.
+              Cole aqui o link de convite ou qualquer mensagem que contenha o link. O sistema extrairá automaticamente o código do grupo.
             </Text>
           </View>
 
           {/* Input do Link */}
           <View style={styles.inputCard}>
-            <Text style={styles.inputLabel}>Link de Convite</Text>
+            <Text style={styles.inputLabel}>Link de Convite ou Mensagem</Text>
             <TextInput
               style={styles.textInput}
               value={inviteLink}
               onChangeText={setInviteLink}
-              placeholder="https://circulabem.app/groups/join/..."
+              placeholder="Cole aqui o link completo ou apenas o código do grupo..."
               placeholderTextColor="#9CA3AF"
               multiline
               autoCapitalize="none"
@@ -264,7 +290,10 @@ const JoinGroupByLinkScreen = () => {
           <View style={styles.tipsCard}>
             <Text style={styles.tipsTitle}>💡 Dicas</Text>
             <Text style={styles.tipText}>
-              • Você pode colar o link completo ou apenas o código do grupo
+              • Você pode colar a mensagem completa do convite - o sistema extrairá automaticamente o código
+            </Text>
+            <Text style={styles.tipText}>
+              • Também funciona com apenas o link ou código do grupo
             </Text>
             <Text style={styles.tipText}>
               • Após solicitar, aguarde a aprovação dos administradores
