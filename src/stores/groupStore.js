@@ -8,7 +8,10 @@ import {
   requestGroupMembership,
   fetchPendingMemberships,
   approveGroupMembership,
-  rejectGroupMembership
+  rejectGroupMembership,
+  validateInviteLink,
+  fetchGroupByHandle,
+  requestMembershipByInvite
 } from '../services/groupService';
 
 const useGroupStore = create((set, get) => ({
@@ -16,6 +19,7 @@ const useGroupStore = create((set, get) => ({
   groups: [],
   allGroups: [],
   pendingMemberships: [],
+  inviteGroup: null, // Grupo encontrado via link de convite
   loading: false,
   error: null,
   selectedGroup: null,
@@ -24,6 +28,7 @@ const useGroupStore = create((set, get) => ({
   setGroups: (groups) => set({ groups }),
   setAllGroups: (allGroups) => set({ allGroups }),
   setPendingMemberships: (pendingMemberships) => set({ pendingMemberships }),
+  setInviteGroup: (inviteGroup) => set({ inviteGroup }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   setSelectedGroup: (group) => set({ selectedGroup: group }),
@@ -181,6 +186,7 @@ const useGroupStore = create((set, get) => ({
     groups: [],
     allGroups: [],
     pendingMemberships: [],
+    inviteGroup: null,
     loading: false,
     error: null,
     selectedGroup: null,
@@ -234,6 +240,47 @@ const useGroupStore = create((set, get) => ({
       throw error;
     }
   },
+
+  // Process invite link and find group
+  processInviteLink: async (inviteLink) => {
+    set({ loading: true, error: null, inviteGroup: null });
+    try {
+      const handle = validateInviteLink(inviteLink);
+      const group = await fetchGroupByHandle(handle);
+      set({ inviteGroup: group, loading: false });
+      return group;
+    } catch (error) {
+      set({ error: error.message, loading: false, inviteGroup: null });
+      throw error;
+    }
+  },
+
+  // Request membership using invite link
+  joinByInvite: async (inviteLink) => {
+    set({ loading: true, error: null });
+    try {
+      const result = await requestMembershipByInvite(inviteLink);
+      
+      // Update local state if needed
+      if (get().inviteGroup) {
+        set({ 
+          inviteGroup: {
+            ...get().inviteGroup,
+            membership: { isMember: true, status: 'pendente' }
+          }
+        });
+      }
+      
+      set({ loading: false });
+      return result;
+    } catch (error) {
+      set({ error: error.message, loading: false });
+      throw error;
+    }
+  },
+
+  // Clear invite-related state
+  clearInviteState: () => set({ inviteGroup: null, error: null }),
 }));
 
 export default useGroupStore; 

@@ -532,12 +532,23 @@ export const fetchGroupById = async (groupId) => {
 };
 
 // Buscar produtos do grupo
-export const fetchGroupProducts = async (groupId) => {
+export const fetchGroupProducts = async (groupId, showAll = false) => {
   try {
     console.log('🔍 Buscando produtos do grupo:', groupId);
     
+    // Verificar se o usuário é admin para determinar quais produtos mostrar
+    const userId = await AsyncStorage.getItem('userId');
+    const membership = await checkUserMembership(groupId, userId);
+    const isAdmin = membership.isAdmin;
+    
     // Buscar relações grupo-produto
-    const groupProductsQuery = `group_id=eq.${groupId}&select=*`;
+    let groupProductsQuery = `group_id=eq.${groupId}&select=*`;
+    
+    // Se não for admin e showAll for false, mostrar apenas produtos confirmados
+    if (!isAdmin && !showAll) {
+      groupProductsQuery = `group_id=eq.${groupId}&status=eq.confirmado&select=*`;
+    }
+    
     const groupProducts = await getTable('group_products', groupProductsQuery);
     
     if (!groupProducts || groupProducts.length === 0) {
@@ -582,6 +593,8 @@ export const fetchGroupProducts = async (groupId) => {
               image_url: null
             },
             groupStatus: groupProduct?.status || 'pendente',
+            groupProductId: groupProduct?.id, // ID da relação grupo-produto
+            canManage: isAdmin, // Indica se o usuário pode gerenciar este produto
             priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`
           };
         } catch (error) {
@@ -592,6 +605,8 @@ export const fetchGroupProducts = async (groupId) => {
             mainImage: null,
             owner: { name: 'Proprietário Desconhecido', image_url: null },
             groupStatus: 'pendente',
+            groupProductId: null,
+            canManage: isAdmin,
             priceFormatted: `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`
           };
         }
@@ -700,4 +715,244 @@ const generateUniqueHandle = (name) => {
 
 const generateInviteLink = (handle) => {
   return `https://circulabem.app/groups/join/${handle}`;
+};
+
+// Validar e processar link de convite
+export const validateInviteLink = (inviteLink) => {
+  try {
+    console.log('🔗 Validando link de convite:', inviteLink);
+    
+    if (!inviteLink || typeof inviteLink !== 'string') {
+      throw new Error('Link de convite inválido');
+    }
+
+    // Limpar espaços em branco
+    const cleanLink = inviteLink.trim();
+    
+    // Padrões de link aceitos
+    const patterns = [
+      /^https:\/\/circulabem\.app\/groups\/join\/(.+)$/,  // Link completo
+      /^circulabem\.app\/groups\/join\/(.+)$/,            // Sem https://
+      /^groups\/join\/(.+)$/,                             // Apenas path
+      /^join\/(.+)$/,                                     // Apenas join/handle
+      /^(.+)$/                                            // Apenas handle
+    ];
+
+    let handle = null;
+    
+    for (const pattern of patterns) {
+      const match = cleanLink.match(pattern);
+      if (match) {
+        handle = match[1];
+        break;
+      }
+    }
+
+    if (!handle) {
+      throw new Error('Formato de link inválido');
+    }
+
+    // Validar o handle
+    if (handle.length < 3) {
+      throw new Error('Handle do grupo muito curto');
+    }
+
+    if (!/^[a-z0-9-]+$/.test(handle)) {
+      throw new Error('Handle contém caracteres inválidos');
+    }
+
+    console.log('✅ Handle extraído:', handle);
+    return handle;
+  } catch (error) {
+    console.error('❌ Erro ao validar link:', error);
+    throw new Error(error.message || 'Link de convite inválido');
+  }
+};
+
+// Buscar grupo por handle
+export const fetchGroupByHandle = async (handle) => {
+  try {
+    console.log('🔍 Buscando grupo por handle:', handle);
+    
+    const groupQuery = `handle=eq.${handle}&select=*`;
+    const groups = await getTable('groups', groupQuery);
+    
+    if (!groups || groups.length === 0) {
+      throw new Error('Grupo não encontrado');
+    }
+
+    const group = groups[0];
+    console.log('✅ Grupo encontrado:', group.name);
+
+    // Buscar informações adicionais do grupo
+    const memberCountQuery = `group_id=eq.${group.id}&status=eq.ativo&select=id`;
+    const members = await getTable('group_members', memberCountQuery);
+    const memberCount = members ? members.length : 0;
+
+    // Verificar membership do usuário atual
+    const userId = await AsyncStorage.getItem('userId');
+    let membership = { isMember: false, role: null, status: null };
+    
+    if (userId) {
+      membership = await checkUserMembership(group.id, userId);
+    }
+
+    return {
+      ...group,
+      memberCount,
+      membership
+    };
+  } catch (error) {
+    console.error('❌ Erro ao buscar grupo por handle:', error);
+    throw new Error(error.message || 'Falha ao buscar grupo');
+  }
+};
+
+// Solicitar participação através de link de convite
+export const requestMembershipByInvite = async (inviteLink) => {
+  try {
+    console.log('🎫 Processando solicitação por convite:', inviteLink);
+    
+    // Validar e extrair handle do link
+    const handle = validateInviteLink(inviteLink);
+    
+    // Buscar grupo pelo handle
+    const group = await fetchGroupByHandle(handle);
+    
+    // Verificar se usuário já é membro
+    if (group.membership.isMember) {
+      if (group.membership.status === 'ativo') {
+        throw new Error('Você já é membro deste grupo');
+      } else if (group.membership.status === 'pendente') {
+        throw new Error('Você já possui uma solicitação pendente para este grupo');
+      }
+    }
+    
+    // Solicitar participação no grupo
+    await requestGroupMembership(group.id);
+    
+    console.log('✅ Solicitação por convite processada com sucesso');
+    return {
+      group,
+      message: `Solicitação enviada para o grupo "${group.name}"! Aguarde a aprovação dos administradores.`
+    };
+  } catch (error) {
+    console.error('❌ Erro ao processar convite:', error);
+    throw new Error(error.message || 'Falha ao processar link de convite');
+  }
+};
+
+// Compartilhar produto com grupo
+export const shareProductWithGroup = async (productId, groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('📤 Compartilhando produto com grupo:', { productId, groupId, userId });
+
+    // Verificar se o produto pertence ao usuário
+    const productQuery = `id=eq.${productId}&user_id=eq.${userId}&select=id,name`;
+    const products = await getTable('products', productQuery);
+    
+    if (!products || products.length === 0) {
+      throw new Error('Produto não encontrado ou você não tem permissão para compartilhá-lo');
+    }
+
+    // Verificar se o usuário é membro ativo do grupo
+    const membershipQuery = `group_id=eq.${groupId}&user_id=eq.${userId}&status=eq.ativo`;
+    const memberships = await getTable('group_members', membershipQuery);
+    
+    if (!memberships || memberships.length === 0) {
+      throw new Error('Você precisa ser membro ativo do grupo para compartilhar produtos');
+    }
+
+    // Verificar se o produto já está compartilhado no grupo
+    const existingShareQuery = `group_id=eq.${groupId}&product_id=eq.${productId}`;
+    const existingShares = await getTable('group_products', existingShareQuery);
+    
+    if (existingShares && existingShares.length > 0) {
+      const existing = existingShares[0];
+      if (existing.status === 'confirmado') {
+        throw new Error('Este produto já está confirmado no grupo');
+      } else if (existing.status === 'pendente') {
+        throw new Error('Este produto já possui uma solicitação pendente no grupo');
+      }
+    }
+
+    // Criar compartilhamento do produto no grupo
+    const groupProduct = {
+      id: uuidv4(),
+      group_id: groupId,
+      product_id: productId,
+      status: 'pendente' // Sempre começa como pendente para aprovação dos admins
+    };
+
+    const result = await insertIntoTable('group_products', groupProduct);
+    console.log('✅ Produto compartilhado com grupo:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erro ao compartilhar produto com grupo:', error);
+    throw new Error(error.message || 'Falha ao compartilhar produto com grupo');
+  }
+};
+
+// Aprovar produto no grupo (apenas para admins)
+export const approveGroupProduct = async (groupProductId, groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('✅ Aprovando produto no grupo:', { groupProductId, groupId });
+
+    // Verificar se o usuário é admin do grupo
+    const adminCheck = await checkUserMembership(groupId, userId);
+    if (!adminCheck.isAdmin) {
+      throw new Error('Apenas administradores podem aprovar produtos');
+    }
+
+    // Atualizar status para 'confirmado'
+    const updateData = {
+      status: 'confirmado'
+    };
+
+    const result = await updateTableById('group_products', groupProductId, updateData);
+    console.log('✅ Produto aprovado no grupo:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erro ao aprovar produto no grupo:', error);
+    throw new Error(error.message || 'Falha ao aprovar produto');
+  }
+};
+
+// Negar produto no grupo (apenas para admins)
+export const rejectGroupProduct = async (groupProductId, groupId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('❌ Negando produto no grupo:', { groupProductId, groupId });
+
+    // Verificar se o usuário é admin do grupo
+    const adminCheck = await checkUserMembership(groupId, userId);
+    if (!adminCheck.isAdmin) {
+      throw new Error('Apenas administradores podem negar produtos');
+    }
+
+    // Remover o produto do grupo completamente
+    const result = await deleteFromTableById('group_products', groupProductId);
+    console.log('✅ Produto removido do grupo:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Erro ao negar produto no grupo:', error);
+    throw new Error(error.message || 'Falha ao negar produto');
+  }
 }; 

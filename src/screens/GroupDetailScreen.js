@@ -12,6 +12,7 @@ import {
   Alert,
   RefreshControl,
   FlatList,
+  Share,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -76,7 +77,7 @@ const GroupDetailScreen = () => {
 
       // Só carregar produtos se o usuário for membro ativo
       if (membershipData.isMember && membershipData.isActive) {
-        const productsData = await fetchGroupProducts(groupId);
+        const productsData = await fetchGroupProducts(groupId, false);
         setProducts(productsData);
       }
 
@@ -111,17 +112,32 @@ const GroupDetailScreen = () => {
   const handleCopyInviteLink = async () => {
     try {
       if (group?.invite_link) {
-        // Usando uma implementação simples para mostrar o link
+        // Mostrar opções ao usuário
         Alert.alert(
-          'Link de Convite',
-          group.invite_link,
+          'Compartilhar Convite',
+          `Escolha como deseja compartilhar o convite do grupo "${group.name}":`,
           [
             { text: 'Cancelar', style: 'cancel' },
-            { 
-              text: 'Copiar', 
+            {
+              text: 'Ver Link',
               onPress: () => {
-                // Aqui você pode implementar a cópia real se tiver o @react-native-clipboard/clipboard
-                Alert.alert('Sucesso', 'Link copiado! (funcionalidade em desenvolvimento)');
+                Alert.alert(
+                  'Link de Convite',
+                  `Copie o link abaixo:\n\n${group.invite_link}`,
+                  [{ text: 'OK', style: 'default' }]
+                );
+              }
+            },
+            {
+              text: 'Compartilhar',
+              onPress: async () => {
+                try {
+                  await Share.share({
+                    message: `Olá! Você foi convidado(a) para participar do grupo "${group.name}" no CirculaBem.\n\nUse este link para solicitar participação:\n${group.invite_link}`,
+                  });
+                } catch (shareError) {
+                  Alert.alert('Erro', 'Não foi possível compartilhar');
+                }
               }
             }
           ]
@@ -130,8 +146,7 @@ const GroupDetailScreen = () => {
         Alert.alert('Erro', 'Link de convite não disponível');
       }
     } catch (error) {
-      console.error('❌ Erro ao copiar link:', error);
-      Alert.alert('Erro', 'Não foi possível copiar o link');
+      Alert.alert('Erro', 'Não foi possível acessar o link de convite');
     }
   };
 
@@ -473,8 +488,8 @@ const GroupDetailScreen = () => {
                 style={styles.inviteButton}
                 onPress={handleCopyInviteLink}
               >
-                <MaterialCommunityIcons name="link" size={20} color="#2563EB" />
-                <Text style={styles.inviteButtonText}>Copiar Link de Convite</Text>
+                <MaterialCommunityIcons name="share-variant" size={20} color="#2563EB" />
+                <Text style={styles.inviteButtonText}>Compartilhar Convite</Text>
               </TouchableOpacity>
             )}
             
@@ -567,14 +582,75 @@ const GroupDetailScreen = () => {
         {membership.isMember && membership.isActive ? (
           <View style={styles.contentContainer}>
             {activeTab === 'produtos' ? (
-              <FlatList
-                data={products}
-                renderItem={renderProductItem}
-                keyExtractor={(item) => item.id}
-                ListEmptyComponent={renderEmptyProducts}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-              />
+              <View>
+                <FlatList
+                  data={products.slice(0, 3)} // Mostrar apenas os primeiros 3 produtos
+                  renderItem={renderProductItem}
+                  keyExtractor={(item) => item.id}
+                  ListEmptyComponent={renderEmptyProducts}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                />
+                {products.length > 3 && (
+                  <TouchableOpacity 
+                    style={styles.viewAllButton}
+                    onPress={() => navigation.navigate('GroupProducts', { 
+                      groupId: group.id, 
+                      groupName: group.name 
+                    })}
+                  >
+                    <MaterialCommunityIcons name="package-variant" size={20} color="#2563EB" />
+                    <Text style={styles.viewAllButtonText}>
+                      Ver todos os {products.length} produtos
+                    </Text>
+                    <MaterialCommunityIcons name="chevron-right" size={20} color="#2563EB" />
+                  </TouchableOpacity>
+                )}
+                {products.length > 0 && products.length <= 3 && (
+                  <TouchableOpacity 
+                    style={styles.viewAllButtonSecondary}
+                    onPress={() => navigation.navigate('GroupProducts', { 
+                      groupId: group.id, 
+                      groupName: group.name 
+                    })}
+                  >
+                    <MaterialCommunityIcons name="magnify" size={16} color="#6B7280" />
+                    <Text style={styles.viewAllButtonSecondaryText}>
+                      Pesquisar produtos
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                
+                {/* Botão para adicionar produtos ao grupo */}
+                <TouchableOpacity 
+                  style={styles.addProductButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Adicionar Produto ao Grupo',
+                      'Você deseja compartilhar um produto seu neste grupo?',
+                      [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { 
+                          text: 'Meus Produtos', 
+                          onPress: () => navigation.navigate('SelectProductForGroup', {
+                            groupId: group.id,
+                            groupName: group.name
+                          })
+                        },
+                        { 
+                          text: 'Criar Novo', 
+                          onPress: () => navigation.navigate('CreateProduct')
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <MaterialCommunityIcons name="plus" size={16} color="#10B981" />
+                  <Text style={styles.addProductButtonText}>
+                    Compartilhar produto neste grupo
+                  </Text>
+                </TouchableOpacity>
+              </View>
             ) : activeTab === 'membros' ? (
               <FlatList
                 data={group.members}
@@ -1032,6 +1108,60 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     padding: 8,
     borderRadius: 8,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#2563EB',
+  },
+  viewAllButtonText: {
+    color: '#2563EB',
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 8,
+  },
+  viewAllButtonSecondary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  viewAllButtonSecondaryText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  addProductButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  addProductButtonText: {
+    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 });
 

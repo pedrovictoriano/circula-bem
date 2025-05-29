@@ -11,6 +11,7 @@ import { uploadProfileImage } from '../services/profileService';
 import { SUPABASE_CONFIG } from '../config/env';
 import KeyboardDismissView from '../components/KeyboardDismissView';
 import LoadingOverlay from '../components/LoadingOverlay';
+import EULAModal from '../components/EULAModal';
 import { useLoading } from '../hooks/useLoading';
 
 function validateCPF(cpf) {
@@ -46,6 +47,8 @@ const SignUpScreen = () => {
   const navigation = useNavigation();
   const [isLoadingCEP, setIsLoadingCEP] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState(null);
+  const [showEULA, setShowEULA] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState(null);
   const { isLoading, loadingMessage, withLoading } = useLoading();
   
   // Create refs for all inputs
@@ -126,6 +129,110 @@ const SignUpScreen = () => {
     setProfileImageUri(null);
   };
 
+  const handleEULAAccept = async () => {
+    setShowEULA(false);
+    if (pendingFormData) {
+      await processRegistration(pendingFormData);
+    }
+  };
+
+  const handleEULAReject = () => {
+    setShowEULA(false);
+    setPendingFormData(null);
+    Alert.alert(
+      'Termo de Uso',
+      'Para se cadastrar no Circula Bem, é necessário aceitar os Termos de Uso.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const processRegistration = async (values) => {
+    const address = {
+      userRegistrationNumber: values.regNum.replace(/\D/g, ''),
+      cep: values.cep.replace(/\D/g, ''),
+      state: values.state, 
+      city: values.city,
+      neighborhood: values.neighborhood, 
+      street: values.street,
+      number: values.number, 
+      complement: values.complement
+    };
+
+    try {
+      let imageUrl = null;
+      
+      // Se tem imagem de perfil, criar usuário e fazer upload
+      if (profileImageUri) {
+        // Primeiro criar o usuário para obter o ID
+        const { userId } = await withLoading(
+          registerUser({
+            email: values.email,
+            pwd: values.pwd,
+            name: values.name,
+            surName: values.surName,
+            regNum: values.regNum.replace(/\D/g, ''),
+            address,
+            imageUrl: null // Primeiro sem imagem
+          }),
+          'Criando sua conta...'
+        );
+        
+        // Depois fazer upload da imagem usando o userId
+        imageUrl = await withLoading(
+          uploadProfileImage(userId, profileImageUri),
+          'Fazendo upload da foto de perfil...'
+        );
+        
+        // Atualizar o perfil com a URL da imagem
+        await withLoading(
+          fetch(`${SUPABASE_CONFIG.URL}/rest/v1/user_extra_information?user_id=eq.${userId}`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_CONFIG.KEY,
+              'Authorization': `Bearer ${SUPABASE_CONFIG.KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image_url: imageUrl })
+          }),
+          'Atualizando perfil...'
+        );
+      } else {
+        // Se não tem imagem, registrar normalmente
+        await withLoading(
+          registerUser({
+            email: values.email,
+            pwd: values.pwd,
+            name: values.name,
+            surName: values.surName,
+            regNum: values.regNum.replace(/\D/g, ''),
+            address,
+            imageUrl: null
+          }),
+          'Criando sua conta...'
+        );
+      }
+      
+      Alert.alert('Sucesso', 'Usuário cadastrado com sucesso!');
+      navigation.navigate('Login');
+    } catch (err) {
+      if (err.message === 'Email not confirmed') {
+        Alert.alert(
+          'Email não confirmado',
+          'Por favor, verifique sua caixa de entrada e confirme seu email antes de fazer login. Se não recebeu o email, verifique também sua pasta de spam.',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('Login')
+            }
+          ]
+        );
+      } else {
+        Alert.alert('Erro', 'Falha ao registrar. Por favor, tente novamente.');
+      }
+      console.error(err);
+    }
+  };
+
   return (
     <KeyboardDismissView contentContainerStyle={styles.scrollContainer}>
       <Formik
@@ -135,87 +242,8 @@ const SignUpScreen = () => {
         }}
         validationSchema={schema}
         onSubmit={async (values) => {
-          const address = {
-            userRegistrationNumber: values.regNum.replace(/\D/g, ''),
-            cep: values.cep.replace(/\D/g, ''),
-            state: values.state, city: values.city,
-            neighborhood: values.neighborhood, street: values.street,
-            number: values.number, complement: values.complement
-          };
-
-          try {
-            let imageUrl = null;
-            
-            // Se tem imagem de perfil, criar usuário e fazer upload
-            if (profileImageUri) {
-              // Primeiro criar o usuário para obter o ID
-              const { userId } = await withLoading(
-                registerUser({
-                  email: values.email,
-                  pwd: values.pwd,
-                  name: values.name,
-                  surName: values.surName,
-                  regNum: values.regNum.replace(/\D/g, ''),
-                  address,
-                  imageUrl: null // Primeiro sem imagem
-                }),
-                'Criando sua conta...'
-              );
-              
-              // Depois fazer upload da imagem usando o userId
-              imageUrl = await withLoading(
-                uploadProfileImage(userId, profileImageUri),
-                'Fazendo upload da foto de perfil...'
-              );
-              
-              // Atualizar o perfil com a URL da imagem
-              await withLoading(
-                fetch(`${SUPABASE_CONFIG.URL}/rest/v1/user_extra_information?user_id=eq.${userId}`, {
-                  method: 'PATCH',
-                  headers: {
-                    'apikey': SUPABASE_CONFIG.KEY,
-                    'Authorization': `Bearer ${SUPABASE_CONFIG.KEY}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({ image_url: imageUrl })
-                }),
-                'Atualizando perfil...'
-              );
-            } else {
-              // Se não tem imagem, registrar normalmente
-              await withLoading(
-                registerUser({
-                  email: values.email,
-                  pwd: values.pwd,
-                  name: values.name,
-                  surName: values.surName,
-                  regNum: values.regNum.replace(/\D/g, ''),
-                  address,
-                  imageUrl: null
-                }),
-                'Criando sua conta...'
-              );
-            }
-            
-            Alert.alert('Sucesso', 'Usuário cadastrado com sucesso!');
-            navigation.navigate('Login');
-          } catch (err) {
-            if (err.message === 'Email not confirmed') {
-              Alert.alert(
-                'Email não confirmado',
-                'Por favor, verifique sua caixa de entrada e confirme seu email antes de fazer login. Se não recebeu o email, verifique também sua pasta de spam.',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => navigation.navigate('Login')
-                  }
-                ]
-              );
-            } else {
-              Alert.alert('Erro', 'Falha ao registrar. Por favor, tente novamente.');
-            }
-            console.error(err);
-          }
+          setPendingFormData(values);
+          setShowEULA(true);
         }}
       >
         {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
@@ -306,6 +334,11 @@ const SignUpScreen = () => {
         )}
       </Formik>
       <LoadingOverlay visible={isLoading} message={loadingMessage} />
+      <EULAModal
+        visible={showEULA}
+        onAccept={handleEULAAccept}
+        onReject={handleEULAReject}
+      />
     </KeyboardDismissView>
   );
 };

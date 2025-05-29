@@ -71,6 +71,10 @@ const GroupsScreen = () => {
     navigation.navigate('CreateGroup');
   };
 
+  const handleJoinByInvite = () => {
+    navigation.navigate('JoinGroupByLink');
+  };
+
   const handleRequestMembership = async (groupId, groupName) => {
     Alert.alert(
       'Solicitar Participação',
@@ -307,6 +311,9 @@ const GroupsScreen = () => {
               color="#6B7280" 
             />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.inviteButton} onPress={handleJoinByInvite}>
+            <MaterialCommunityIcons name="link" size={24} color="#6B7280" />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.addButton} onPress={handleCreateGroup}>
             <MaterialCommunityIcons name="plus" size={24} color="#6B7280" />
           </TouchableOpacity>
@@ -387,6 +394,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   toggleButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  inviteButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
