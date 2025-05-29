@@ -14,6 +14,8 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CreateProduct from '../screens/CreateProduct';
 import CreateGroup from '../screens/CreateGroup';
 import GroupDetailScreen from '../screens/GroupDetailScreen';
+import GroupProductsScreen from '../screens/GroupProductsScreen';
+import SelectProductForGroupScreen from '../screens/SelectProductForGroupScreen';
 import JoinGroupByLinkScreen from '../screens/JoinGroupByLinkScreen';
 import MyRentsScreen from '../screens/MyRentsScreen';
 import MyProductsScreen from '../screens/MyProductsScreen';
@@ -57,6 +59,8 @@ const AppNavigator = () => {
       <Stack.Screen name="CreateProduct" component={CreateProduct} />
       <Stack.Screen name="CreateGroup" component={CreateGroup} options={{ title: 'Criar Grupo' }} />
       <Stack.Screen name="GroupDetail" component={GroupDetailScreen} options={{ title: 'Detalhes do Grupo' }} />
+      <Stack.Screen name="GroupProducts" component={GroupProductsScreen} options={{ title: 'Produtos do Grupo' }} />
+      <Stack.Screen name="SelectProductForGroup" component={SelectProductForGroupScreen} options={{ title: 'Selecionar Produto para o Grupo' }} />
       <Stack.Screen name="JoinGroupByLink" component={JoinGroupByLinkScreen} options={{ title: 'Entrar por Convite' }} />
       <Stack.Screen name="MyRents" options={{ title: 'Meus Aluguéis' }}>
         {() => (
