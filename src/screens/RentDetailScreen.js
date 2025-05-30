@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getRentById } from '../services/rentService';
 import { fetchUserById } from '../services/api';
 import ProfileImage from '../components/ProfileImage';
+import { maskCPF } from '../utils/cpfUtils';
 
 const RentDetailScreen = ({ route, navigation }) => {
   const { rentId } = route.params;
@@ -253,7 +254,7 @@ const RentDetailScreen = ({ route, navigation }) => {
                     {owner.first_name} {owner.last_name}
                   </Text>
                   <Text style={styles.ownerRegistration}>
-                    {owner.registration_number || 'Registro não disponível'}
+                    {maskCPF(owner.registration_number) || 'Registro não disponível'}
                   </Text>
                   {owner.addresses?.[0] && (
                     <Text style={styles.ownerLocation}>

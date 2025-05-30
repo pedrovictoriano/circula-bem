@@ -25,6 +25,7 @@ import {
 } from '../services/groupService';
 import useGroupStore from '../stores/groupStore';
 import ProfileImage from '../components/ProfileImage';
+import { maskCPF } from '../utils/cpfUtils';
 
 const GroupDetailScreen = () => {
   const navigation = useNavigation();
@@ -315,7 +316,7 @@ const GroupDetailScreen = () => {
       <View style={styles.memberInfo}>
         <Text style={styles.memberName}>{item.user.full_name}</Text>
         <Text style={styles.memberRegistration}>
-          {item.user.registration_number}
+          {maskCPF(item.user.registration_number)}
         </Text>
         <Text style={styles.memberDate}>
           Membro desde {new Date(item.joined_at).toLocaleDateString('pt-BR')}
@@ -335,7 +336,7 @@ const GroupDetailScreen = () => {
       <View style={styles.memberInfo}>
         <Text style={styles.memberName}>{item.user.full_name}</Text>
         <Text style={styles.memberRegistration}>
-          {item.user.registration_number}
+          {maskCPF(item.user.registration_number)}
         </Text>
         <Text style={styles.memberDate}>
           Solicitou em {new Date(item.created_at).toLocaleDateString('pt-BR')}
