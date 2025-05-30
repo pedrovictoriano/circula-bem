@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions, SafeAreaView } from 'react-native';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, FlatList, Dimensions, SafeAreaView, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -21,6 +21,7 @@ const HomeScreen = () => {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,128 +60,162 @@ const HomeScreen = () => {
     loadData();
   };
 
-  const renderHeader = () => (
-    <>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
-          <ProfileImage
-            imageUrl={userData?.image_url}
-            size={40}
-            borderWidth={2}
-            borderColor="#fff"
-          />
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIcon}>
-            <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerIcon}>
-            <MaterialCommunityIcons name="cog-outline" size={26} color="#222" />
-          </TouchableOpacity>
-        </View>
-      </View>
+  // Função para aplicar o filtro
+  const applySearch = useCallback(() => {
+    setAppliedSearchQuery(searchQuery);
+  }, [searchQuery]);
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <MaterialCommunityIcons name="magnify" size={22} color="#B0B0B0" style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Search..."
-          placeholderTextColor="#B0B0B0"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+  // Função para limpar o filtro
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+    setAppliedSearchQuery('');
+  }, []);
+
+  // Memorizar os produtos filtrados
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name?.toLowerCase().includes(appliedSearchQuery.toLowerCase())
+    );
+  }, [products, appliedSearchQuery]);
+
+  // Memorizar o renderItem para evitar re-criações
+  const renderProductItem = useCallback(({ item }) => {
+    // Busca a imagem que termina com _0.jpg
+    const previewImage = item.product_images?.find(img =>
+      img.image_url && img.image_url.endsWith('_0.jpg')
+    );
+    return (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+      >
+        <Image
+          source={{ uri: previewImage?.image_url || 'https://via.placeholder.com/150' }}
+          style={styles.productImage}
         />
-      </View>
-
-      {/* Info Cards */}
-      <View style={styles.infoCardsRow}>
-        {INFO_CARDS.map((card, idx) => (
-          <View key={idx} style={styles.infoCard}>
-            <View style={styles.infoCardIconWrap}>
-              <MaterialCommunityIcons name={card.icon} size={28} color="#4F8CFF" />
-            </View>
-            <Text style={styles.infoCardValue}>{card.value}</Text>
-            <Text style={styles.infoCardLabel}>{card.label}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Categories */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Categories</Text>
-        <TouchableOpacity>
-          <Text style={styles.viewAll}>View All</Text>
-        </TouchableOpacity>
-      </View>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <Text>Carregando categorias...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Erro ao carregar categorias: {error}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={categories}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.categoryItem}>
-              <View style={styles.categoryImageContainer}>
-                <Image source={{ uri: item.image_url }} style={styles.categoryImage} />
-              </View>
-              <Text style={styles.categoryText}>{item.description}</Text>
-            </TouchableOpacity>
-          )}
-          contentContainerStyle={styles.categoriesScroll}
-        />
-      )}
-
-      {/* Products Header */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Products</Text>
-      </View>
-    </>
-  );
-
-  const filteredProducts = products.filter(product =>
-    product.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+        <Text style={styles.productTitle}>{item.name}</Text>
+        <Text style={styles.productPrice}>{item.price ? `R$ ${item.price.toFixed(2)}` : ''}</Text>
+      </TouchableOpacity>
+    );
+  }, [navigation]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={filteredProducts}
-        keyExtractor={item => item.id?.toString()}
-        numColumns={2}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.productsGrid}
-        renderItem={({ item }) => {
-          // Busca a imagem que termina com _0.jpg
-          const previewImage = item.product_images?.find(img =>
-            img.image_url && img.image_url.endsWith('_0.jpg')
-          );
-          return (
-            <TouchableOpacity
-              style={styles.productCard}
-              onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-            >
-              <Image
-                source={{ uri: previewImage?.image_url || 'https://via.placeholder.com/150' }}
-                style={styles.productImage}
-              />
-              <Text style={styles.productTitle}>{item.name}</Text>
-              <Text style={styles.productPrice}>{item.price ? `R$ ${item.price.toFixed(2)}` : ''}</Text>
+      <View style={styles.content}>
+        {/* Header fixo fora da FlatList */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+            <ProfileImage
+              imageUrl={userData?.image_url}
+              size={40}
+              borderWidth={2}
+              borderColor="#fff"
+            />
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.headerIcon}>
+              <MaterialCommunityIcons name="bell-outline" size={26} color="#222" />
             </TouchableOpacity>
-          );
-        }}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-      />
+            <TouchableOpacity style={styles.headerIcon}>
+              <MaterialCommunityIcons name="cog-outline" size={26} color="#222" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Search Bar fixo */}
+        <View style={styles.searchContainer}>
+          <MaterialCommunityIcons name="magnify" size={22} color="#B0B0B0" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Buscar produtos..."
+            placeholderTextColor="#B0B0B0"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onBlur={applySearch}
+            onSubmitEditing={applySearch}
+            returnKeyType="search"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <MaterialCommunityIcons name="close" size={20} color="#B0B0B0" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Conteúdo scrollável */}
+        <FlatList
+          data={[]} // Array vazio para usar apenas o ListHeaderComponent
+          ListHeaderComponent={
+            <>
+              {/* Info Cards */}
+              <View style={styles.infoCardsRow}>
+                {INFO_CARDS.map((card, idx) => (
+                  <View key={idx} style={styles.infoCard}>
+                    <View style={styles.infoCardIconWrap}>
+                      <MaterialCommunityIcons name={card.icon} size={28} color="#4F8CFF" />
+                    </View>
+                    <Text style={styles.infoCardValue}>{card.value}</Text>
+                    <Text style={styles.infoCardLabel}>{card.label}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Categories */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Categories</Text>
+                <TouchableOpacity>
+                  <Text style={styles.viewAll}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <Text>Carregando categorias...</Text>
+                </View>
+              ) : error ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>Erro ao carregar categorias: {error}</Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={categories}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.categoryItem}>
+                      <View style={styles.categoryImageContainer}>
+                        <Image source={{ uri: item.image_url }} style={styles.categoryImage} />
+                      </View>
+                      <Text style={styles.categoryText}>{item.description}</Text>
+                    </TouchableOpacity>
+                  )}
+                  contentContainerStyle={styles.categoriesScroll}
+                />
+              )}
+
+              {/* Products Header */}
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Products</Text>
+              </View>
+
+              {/* Products Grid */}
+              <FlatList
+                data={filteredProducts}
+                keyExtractor={item => item.id?.toString()}
+                numColumns={2}
+                renderItem={renderProductItem}
+                scrollEnabled={false}
+                contentContainerStyle={styles.productsGrid}
+              />
+            </>
+          }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
     </SafeAreaView>
   );
 };
@@ -189,6 +224,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F7F8FA',
+  },
+  content: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -377,6 +415,10 @@ const styles = StyleSheet.create({
   errorText: {
     color: 'red',
     textAlign: 'center',
+  },
+  clearButton: {
+    padding: 4,
+    marginLeft: 8,
   },
 });
 
