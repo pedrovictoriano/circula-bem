@@ -4,6 +4,7 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchUserById } from '../services/api';
 import ProfileImage from '../components/ProfileImage';
+import { maskCPF } from '../utils/cpfUtils';
 
 const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
@@ -78,7 +79,7 @@ const ProfileScreen = () => {
           <Text style={styles.sectionTitle}>Informações</Text>
           <View style={styles.infoItem}>
             <Icon name="id-card" size={18} color="#4F8CFF" />
-            <Text style={styles.infoText}>{userData.registration_number}</Text>
+            <Text style={styles.infoText}>{maskCPF(userData.registration_number)}</Text>
           </View>
           {userData.addresses && userData.addresses.length > 0 && (
             <View style={styles.infoItem}>

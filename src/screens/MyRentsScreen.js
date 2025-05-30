@@ -12,10 +12,12 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import useRentStore from '../stores/rentStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const MyRentsScreen = () => {
+  const navigation = useNavigation();
   const {
     filteredRents,
     loading,
@@ -42,6 +44,21 @@ const MyRentsScreen = () => {
 
   const handleFilterChange = (filterType) => {
     filterRents(filterType);
+  };
+
+  const handleRentPress = (rent) => {
+    // Só permitir navegação para detalhes se o status permitir
+    const allowedStatuses = ['confirmado', 'em andamento', 'concluído'];
+    
+    if (allowedStatuses.includes(rent.dbStatus)) {
+      navigation.navigate('RentDetail', { rentId: rent.id });
+    } else {
+      Alert.alert(
+        'Detalhes não disponíveis',
+        'Os detalhes completos só estão disponíveis para aluguéis confirmados, em andamento ou concluídos.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const getStatusColor = (status) => {
@@ -83,7 +100,10 @@ const MyRentsScreen = () => {
   ];
 
   const renderRentItem = ({ item }) => (
-    <TouchableOpacity style={styles.rentCard}>
+    <TouchableOpacity 
+      style={styles.rentCard}
+      onPress={() => handleRentPress(item)}
+    >
       <Image source={{ uri: item.image }} style={styles.productImage} />
       <View style={styles.rentInfo}>
         <Text style={styles.productName}>{item.productName}</Text>
