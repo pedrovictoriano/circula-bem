@@ -20,6 +20,7 @@ import JoinGroupByLinkScreen from '../screens/JoinGroupByLinkScreen';
 import MyRentsScreen from '../screens/MyRentsScreen';
 import MyProductsScreen from '../screens/MyProductsScreen';
 import RentManagementScreen from '../screens/RentManagementScreen';
+import RentDetailScreen from '../screens/RentDetailScreen';
 import GroupsScreen from '../screens/GroupsScreen';
 import AccountScreen from '../screens/AccountScreen';
 import MainLayout from '../components/MainLayout';
@@ -69,6 +70,7 @@ const AppNavigator = () => {
           </ScreenWrapper>
         )}
       </Stack.Screen>
+      <Stack.Screen name="RentDetail" component={RentDetailScreen} options={{ title: 'Detalhes do Aluguel' }} />
       <Stack.Screen name="MyProducts" options={{ title: 'Meus Produtos' }}>
         {() => (
           <ScreenWrapper>

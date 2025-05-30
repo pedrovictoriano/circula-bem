@@ -171,44 +171,56 @@ export const getRentById = async (rentId) => {
       throw new Error('Usuário não autenticado');
     }
 
+    console.log('🔍 Buscando aluguel por ID:', rentId);
+
     // Buscar o aluguel específico
     const rentQuery = `id=eq.${rentId}&user_id=eq.${userId}&select=id,product_id,dates,status,total_amount`;
     const rents = await getTable('rents', rentQuery);
     
     if (!rents || rents.length === 0) {
+      console.log('❌ Aluguel não encontrado');
       return null;
     }
 
     const rent = rents[0];
+    console.log('📋 Aluguel encontrado:', rent);
 
     // Buscar dados do produto
     const productQuery = `id=eq.${rent.product_id}&select=id,name,description,price,user_id`;
     const products = await getTable('products', productQuery);
     
     if (!products || products.length === 0) {
+      console.log('❌ Produto não encontrado');
       return null;
     }
     
     const product = products[0];
+    console.log('📦 Produto encontrado:', product);
 
     // Buscar imagens do produto
     const imagesQuery = `product_id=eq.${product.id}&select=image_url`;
     const images = await getTable('product_images', imagesQuery);
+    console.log('🖼️ Imagens encontradas:', images?.length || 0);
 
     // Buscar informações do proprietário
     const ownerQuery = `user_id=eq.${product.user_id}&select=first_name,last_name,registration_number`;
     const owners = await getTable('user_extra_information', ownerQuery);
+    console.log('👤 Proprietário encontrado:', owners?.length || 0);
     
     const owner = owners && owners.length > 0 ? owners[0] : null;
 
     // Processar as datas
     const dates = rent.dates || [];
     let startDate = '';
+    let endDate = '';
     
     if (dates.length > 0) {
       const sortedDates = [...dates].sort();
       startDate = formatDate(sortedDates[0]);
+      endDate = formatDate(sortedDates[sortedDates.length - 1]);
     }
+
+    console.log('✅ Dados processados do aluguel');
 
     return {
       id: rent.id,
@@ -218,15 +230,16 @@ export const getRentById = async (rentId) => {
       ownerName: owner ? `${owner.first_name} ${owner.last_name}` : 'Proprietário não identificado',
       ownerRegistration: owner ? owner.registration_number : '',
       startDate,
+      endDate,
       dates: dates,
       totalDays: dates.length,
-      status: rent.status,
-      totalAmount: rent.total_amount || 0,
-      price: parseFloat(product.price),
+      status: rent.status, // Status original do banco
+      totalAmount: rent.total_amount ? `R$ ${(rent.total_amount / 100).toFixed(2).replace('.', ',')}` : 'R$ 0,00',
+      price: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}/dia`,
       images: images ? images.map(img => img.image_url) : [],
     };
   } catch (error) {
-    console.error('Erro ao buscar aluguel por ID:', error);
+    console.error('❌ Erro ao buscar aluguel por ID:', error);
     throw error;
   }
 };
