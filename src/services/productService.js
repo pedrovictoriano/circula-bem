@@ -224,80 +224,96 @@ export const fetchUserProducts = async () => {
 
     console.log(`✅ Encontrados ${products.length} produtos`);
 
-    // Para cada produto, buscar categoria e imagens
-    const processedProducts = await Promise.all(
-      products.map(async (product) => {
-        try {
-          // Buscar categoria
-          const categoryQuery = `id=eq.${product.category_id}&select=description,image_url`;
-          const categories = await getTable('categories', categoryQuery);
-          const category = categories && categories.length > 0 ? categories[0] : null;
+    if (products.length === 0) {
+      return [];
+    }
 
-          // Buscar imagens do produto
-          const imagesQuery = `product_id=eq.${product.id}&select=image_url`;
-          const images = await getTable('product_images', imagesQuery);
+    // Extrair IDs únicos para queries em batch
+    const productIds = products.map(p => p.id);
+    const categoryIds = [...new Set(products.map(p => p.category_id))];
 
-          // Buscar estatísticas de aluguel
-          const rentStatsQuery = `product_id=eq.${product.id}&select=id,status,dates`;
-          const rents = await getTable('rents', rentStatsQuery);
+    // BATCH QUERIES - muito mais eficiente
+    const [categoriesData, imagesData, rentsData] = await Promise.all([
+      // Buscar todas as categorias de uma vez
+      getTable('categories', `id=in.(${categoryIds.join(',')})&select=id,description,image_url`),
+      
+      // Buscar todas as imagens de uma vez
+      getTable('product_images', `product_id=in.(${productIds.join(',')})&select=product_id,image_url`),
+      
+      // Buscar todos os aluguéis de uma vez
+      getTable('rents', `product_id=in.(${productIds.join(',')})&select=product_id,status,dates`)
+    ]);
+
+    console.log(`📦 Dados carregados - Categorias: ${categoriesData?.length || 0}, Imagens: ${imagesData?.length || 0}, Aluguéis: ${rentsData?.length || 0}`);
+
+    // Processar produtos com dados já carregados
+    const processedProducts = products.map((product) => {
+      try {
+        // Encontrar categoria
+        const category = categoriesData?.find(cat => cat.id === product.category_id);
+
+        // Encontrar imagens do produto
+        const productImages = imagesData?.filter(img => img.product_id === product.id) || [];
+
+        // Calcular estatísticas de aluguel
+        const productRents = rentsData?.filter(rent => rent.product_id === product.id) || [];
+        
+        let totalRents = 0;
+        let activeRents = 0;
+        let totalEarnings = 0;
+
+        if (productRents.length > 0) {
+          totalRents = productRents.length;
+          activeRents = productRents.filter(rent => 
+            rent.status === 'confirmado' || rent.status === 'em andamento'
+          ).length;
           
-          // Calcular estatísticas
-          let totalRents = 0;
-          let activeRents = 0;
-          let totalEarnings = 0;
-
-          if (rents && Array.isArray(rents)) {
-            totalRents = rents.length;
-            activeRents = rents.filter(rent => 
-              rent.status === 'confirmado' || rent.status === 'em andamento'
-            ).length;
-            
-            // Calcular ganhos (aproximado baseado nas datas)
-            rents.forEach(rent => {
-              if (rent.dates && Array.isArray(rent.dates)) {
-                totalEarnings += rent.dates.length * parseFloat(product.price);
-              }
-            });
-          }
-
-          return {
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            price: parseFloat(product.price),
-            priceFormatted: formatPrice(product.price, true),
-            category: category ? category.description : 'Categoria não definida',
-            image: images && images.length > 0 ? images[0].image_url : 'https://via.placeholder.com/80x80',
-            images: images ? images.map(img => img.image_url) : [],
-            stats: {
-              totalRents,
-              activeRents,
-              totalEarnings: totalEarnings.toFixed(2),
-              totalEarningsFormatted: formatTotalAmount(totalEarnings)
+          // Calcular ganhos (aproximado baseado nas datas)
+          productRents.forEach(rent => {
+            if (rent.dates && Array.isArray(rent.dates)) {
+              totalEarnings += rent.dates.length * parseFloat(product.price);
             }
-          };
-        } catch (error) {
-          console.error(`❌ Erro ao processar produto ${product.id}:`, error);
-          return {
-            id: product.id,
-            name: product.name,
-            description: product.description,
-            price: parseFloat(product.price),
-            priceFormatted: formatPrice(product.price, true),
-            category: 'Categoria não definida',
-            image: 'https://via.placeholder.com/80x80',
-            images: [],
-            stats: {
-              totalRents: 0,
-              activeRents: 0,
-              totalEarnings: '0.00',
-              totalEarningsFormatted: formatTotalAmount(0)
-            }
-          };
+          });
         }
-      })
-    );
 
+        return {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: parseFloat(product.price),
+          priceFormatted: formatPrice(product.price, true),
+          category: category?.description || 'Categoria não definida',
+          image: productImages.length > 0 ? productImages[0].image_url : 'https://via.placeholder.com/80x80',
+          images: productImages.map(img => img.image_url),
+          stats: {
+            totalRents,
+            activeRents,
+            totalEarnings: totalEarnings.toFixed(2),
+            totalEarningsFormatted: formatTotalAmount(totalEarnings)
+          }
+        };
+      } catch (error) {
+        console.error(`❌ Erro ao processar produto ${product.id}:`, error);
+        return {
+          id: product.id,
+          name: product.name,
+          description: product.description,
+          price: parseFloat(product.price),
+          priceFormatted: formatPrice(product.price, true),
+          category: 'Categoria não definida',
+          image: 'https://via.placeholder.com/80x80',
+          images: [],
+          stats: {
+            totalRents: 0,
+            activeRents: 0,
+            totalEarnings: '0.00',
+            totalEarningsFormatted: formatTotalAmount(0)
+          }
+        };
+      }
+    });
+
+    console.log(`✅ ${processedProducts.length} produtos processados com sucesso`);
     return processedProducts;
   } catch (error) {
     console.error('❌ Erro ao buscar produtos do usuário:', error);
@@ -323,5 +339,126 @@ export const getUserProductStats = async () => {
   } catch (error) {
     console.error('❌ Erro ao obter estatísticas dos produtos:', error);
     throw error;
+  }
+};
+
+export const updateProduct = async (productId, updateData) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const userId = await AsyncStorage.getItem('userId');
+    
+    console.log('🔄 Atualizando produto:', productId, updateData);
+    
+    // Verificar se o produto pertence ao usuário
+    const product = await fetchProductById(productId);
+    if (product.user_id !== userId) {
+      throw new Error('Você não tem permissão para editar este produto');
+    }
+    
+    const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/products?id=eq.${productId}`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_CONFIG.KEY,
+        'Authorization': `Bearer ${token || SUPABASE_CONFIG.KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Erro detalhado do servidor:', errorText);
+      throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('✅ Produto atualizado com sucesso:', data);
+    return data[0];
+  } catch (error) {
+    console.error('❌ Erro ao atualizar produto:', error);
+    throw new Error(error.message || 'Falha ao atualizar produto');
+  }
+};
+
+export const deleteProduct = async (productId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const userId = await AsyncStorage.getItem('userId');
+    
+    console.log('🗑️ Excluindo produto:', productId);
+    
+    // Verificar se o produto pertence ao usuário
+    const product = await fetchProductById(productId);
+    if (product.user_id !== userId) {
+      throw new Error('Você não tem permissão para excluir este produto');
+    }
+    
+    // Verificar se há aluguéis ativos
+    const rentsQuery = `product_id=eq.${productId}&status=in.(pendente,confirmado,em andamento)`;
+    const activeRents = await getTable('rents', rentsQuery);
+    
+    if (activeRents && activeRents.length > 0) {
+      throw new Error('Não é possível excluir um produto com aluguéis ativos ou pendentes');
+    }
+    
+    const response = await fetch(`${SUPABASE_CONFIG.URL}/rest/v1/products?id=eq.${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'apikey': SUPABASE_CONFIG.KEY,
+        'Authorization': `Bearer ${token || SUPABASE_CONFIG.KEY}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Erro detalhado do servidor:', errorText);
+      throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+    }
+
+    console.log('✅ Produto excluído com sucesso');
+    return true;
+  } catch (error) {
+    console.error('❌ Erro ao excluir produto:', error);
+    throw new Error(error.message || 'Falha ao excluir produto');
+  }
+};
+
+export const fetchProductForEdit = async (productId) => {
+  try {
+    const userId = await AsyncStorage.getItem('userId');
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+
+    console.log('🔍 Buscando produto para edição:', productId);
+
+    // Buscar produto completo com verificação de propriedade
+    const productQuery = `id=eq.${productId}&user_id=eq.${userId}&select=*`;
+    const products = await getTable('products', productQuery);
+    
+    if (!products || products.length === 0) {
+      throw new Error('Produto não encontrado ou você não tem permissão para editá-lo');
+    }
+
+    const product = products[0];
+
+    // Buscar imagens do produto
+    const imagesQuery = `product_id=eq.${product.id}&select=image_url`;
+    const images = await getTable('product_images', imagesQuery);
+
+    console.log('✅ Produto carregado para edição');
+    return {
+      ...product,
+      images: images ? images.map(img => img.image_url) : []
+    };
+  } catch (error) {
+    console.error('❌ Erro ao buscar produto para edição:', error);
+    throw new Error(error.message || 'Falha ao buscar produto para edição');
   }
 }; 

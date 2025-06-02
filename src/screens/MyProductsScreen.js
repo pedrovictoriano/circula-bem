@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { fetchUserProducts, getUserProductStats } from '../services/productServi
 
 const MyProductsScreen = () => {
   const navigation = useNavigation();
+  const isInitialLoad = useRef(true);
   const [products, setProducts] = useState([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -31,6 +32,19 @@ const MyProductsScreen = () => {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  // Listener de navegação para recarregar quando voltar de outras telas
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Só recarrega se não for a primeira vez (já carregou no useEffect acima)
+      if (!isInitialLoad.current && !loading && !refreshing) {
+        console.log('🔄 Recarregando produtos após voltar para a tela');
+        loadProducts();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, loading, refreshing]);
 
   const loadProducts = async () => {
     try {
@@ -49,6 +63,10 @@ const MyProductsScreen = () => {
       );
     } finally {
       setLoading(false);
+      // Marcar que o load inicial foi concluído
+      if (isInitialLoad.current) {
+        isInitialLoad.current = false;
+      }
     }
   };
 
@@ -65,6 +83,14 @@ const MyProductsScreen = () => {
   const handleProductPress = (product) => {
     // Navegar para detalhes do produto ou tela de gerenciamento
     Alert.alert('Produto', `Você selecionou: ${product.name}`);
+  };
+
+  const handleEditProduct = (product) => {
+    navigation.navigate('EditProduct', { product });
+  };
+
+  const handleViewProduct = (product) => {
+    navigation.navigate('ProductDetail', { productId: product.id });
   };
 
   const renderProductItem = ({ item }) => (
@@ -90,10 +116,10 @@ const MyProductsScreen = () => {
         </View>
       </View>
       <View style={styles.productActions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleViewProduct(item)}>
           <MaterialCommunityIcons name="eye" size={20} color="#6B7280" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => handleEditProduct(item)}>
           <MaterialCommunityIcons name="pencil" size={20} color="#6B7280" />
         </TouchableOpacity>
         <MaterialCommunityIcons name="chevron-right" size={24} color="#9CA3AF" />
