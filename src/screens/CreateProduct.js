@@ -92,7 +92,7 @@ const CreateProduct = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if (!name || !description || !price || !categoryId || imageUris.length === 0 || selectedDays.length === 0) {
+    if (!name || !description || price === '' || !categoryId || imageUris.length === 0 || selectedDays.length === 0) {
       Alert.alert('Erro', 'Por favor, preencha todos os campos');
       return;
     }
@@ -122,10 +122,11 @@ const CreateProduct = ({ navigation }) => {
       console.log('Dias selecionados (índices):', selectedDays);
       console.log('Dias formatados:', formattedDays);
       
-      // Validar price
-      const parsedPrice = parseFloat(price);
-      if (isNaN(parsedPrice) || parsedPrice <= 0) {
-        Alert.alert('Erro', 'Preço deve ser um valor válido maior que zero');
+      // Validar price - agora permite 0.00 (produtos gratuitos)
+      const normalizedPrice = price.replace(',', '.');
+      const parsedPrice = parseFloat(normalizedPrice);
+      if (isNaN(parsedPrice) || parsedPrice < 0) {
+        Alert.alert('Erro', 'Preço deve ser um valor válido (pode ser 0,00 para produtos gratuitos)');
         return;
       }
       
@@ -229,19 +230,33 @@ const CreateProduct = ({ navigation }) => {
                   style={styles.priceInput}
                   value={price}
                   onChangeText={(text) => {
-                    const numericValue = text.replace(/[^0-9.]/g, '');
+                    // Remove caracteres não numéricos exceto vírgula e ponto
+                    let numericValue = text.replace(/[^0-9.,]/g, '');
+                    
+                    // Substitui vírgula por ponto para processamento
+                    numericValue = numericValue.replace(/,/g, '.');
+                    
+                    // Evita múltiplos pontos decimais
                     const parts = numericValue.split('.');
                     if (parts.length > 2) {
-                      setPrice(parts[0] + '.' + parts.slice(1).join(''));
-                    } else {
-                      setPrice(numericValue);
+                      numericValue = parts[0] + '.' + parts.slice(1).join('');
                     }
+                    
+                    // Limita a 2 casas decimais
+                    if (parts.length === 2 && parts[1].length > 2) {
+                      numericValue = parts[0] + '.' + parts[1].substring(0, 2);
+                    }
+                    
+                    // Substitui ponto por vírgula para exibição (padrão brasileiro)
+                    const displayValue = numericValue.replace('.', ',');
+                    setPrice(displayValue);
                   }}
                   placeholder="0,00"
                   placeholderTextColor="#999"
                   keyboardType="decimal-pad"
                 />
               </View>
+              <Text style={styles.priceHint}>Deixe 0,00 para produtos gratuitos</Text>
             </View>
           </View>
 
@@ -584,6 +599,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  priceHint: {
+    color: '#666',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
 

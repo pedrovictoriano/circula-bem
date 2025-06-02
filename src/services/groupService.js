@@ -3,6 +3,7 @@ import { insertIntoTable, getTable, updateTableById, deleteFromTableById } from 
 import { SUPABASE_CONFIG } from '../config/env';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
+import { formatPrice } from '../utils/priceUtils';
 
 // Criar um novo grupo
 export const createGroup = async (groupData) => {
@@ -595,7 +596,7 @@ export const fetchGroupProducts = async (groupId, showAll = false) => {
             groupStatus: groupProduct?.status || 'pendente',
             groupProductId: groupProduct?.id, // ID da relação grupo-produto
             canManage: isAdmin, // Indica se o usuário pode gerenciar este produto
-            priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`
+            priceFormatted: formatPrice(product.price || 0, true)
           };
         } catch (error) {
           console.error(`❌ Erro ao processar produto ${product.id}:`, error);
@@ -607,7 +608,7 @@ export const fetchGroupProducts = async (groupId, showAll = false) => {
             groupStatus: 'pendente',
             groupProductId: null,
             canManage: isAdmin,
-            priceFormatted: `R$ ${parseFloat(product.price || 0).toFixed(2).replace('.', ',')}`
+            priceFormatted: formatPrice(product.price || 0, true)
           };
         }
       })

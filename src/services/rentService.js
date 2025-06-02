@@ -1,5 +1,6 @@
-import { getTable } from './supabaseClient';
+import { getTable, insertIntoTable, updateInTable } from './supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatPrice, formatPriceFromCents } from '../utils/priceUtils';
 
 export const fetchUserRents = async () => {
   try {
@@ -105,8 +106,8 @@ export const fetchUserRents = async () => {
             totalDays: Array.isArray(dates) ? dates.length : 0,
             status: mappedStatus,
             dbStatus: rent.status, // Status original do banco
-            price: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}/dia`,
-            totalAmount: rent.total_amount ? `R$ ${(rent.total_amount / 100).toFixed(2).replace('.', ',')}` : 'R$ 0,00',
+            price: formatPrice(product.price, true),
+            totalAmount: rent.total_amount ? formatPriceFromCents(rent.total_amount) : 'Grátis',
             image: images && Array.isArray(images) && images.length > 0 ? images[0].image_url : 'https://via.placeholder.com/80x80',
             description: product.description,
           };
@@ -234,8 +235,8 @@ export const getRentById = async (rentId) => {
       dates: dates,
       totalDays: dates.length,
       status: rent.status, // Status original do banco
-      totalAmount: rent.total_amount ? `R$ ${(rent.total_amount / 100).toFixed(2).replace('.', ',')}` : 'R$ 0,00',
-      price: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}/dia`,
+      totalAmount: rent.total_amount ? formatPriceFromCents(rent.total_amount) : 'Grátis',
+      price: formatPrice(product.price, true),
       images: images ? images.map(img => img.image_url) : [],
     };
   } catch (error) {

@@ -2,6 +2,7 @@ import { SUPABASE_CONFIG } from '../config/env';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { v4 as uuidv4 } from 'uuid';
 import { getTable } from './supabaseClient';
+import { formatPrice, formatTotalAmount } from '../utils/priceUtils';
 
 export const createProduct = async (productData) => {
   try {
@@ -264,7 +265,7 @@ export const fetchUserProducts = async () => {
             name: product.name,
             description: product.description,
             price: parseFloat(product.price),
-            priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`,
+            priceFormatted: formatPrice(product.price, true),
             category: category ? category.description : 'Categoria não definida',
             image: images && images.length > 0 ? images[0].image_url : 'https://via.placeholder.com/80x80',
             images: images ? images.map(img => img.image_url) : [],
@@ -272,7 +273,7 @@ export const fetchUserProducts = async () => {
               totalRents,
               activeRents,
               totalEarnings: totalEarnings.toFixed(2),
-              totalEarningsFormatted: `R$ ${totalEarnings.toFixed(2).replace('.', ',')}`
+              totalEarningsFormatted: formatTotalAmount(totalEarnings)
             }
           };
         } catch (error) {
@@ -282,7 +283,7 @@ export const fetchUserProducts = async () => {
             name: product.name,
             description: product.description,
             price: parseFloat(product.price),
-            priceFormatted: `R$ ${parseFloat(product.price).toFixed(2).replace('.', ',')}`,
+            priceFormatted: formatPrice(product.price, true),
             category: 'Categoria não definida',
             image: 'https://via.placeholder.com/80x80',
             images: [],
@@ -290,7 +291,7 @@ export const fetchUserProducts = async () => {
               totalRents: 0,
               activeRents: 0,
               totalEarnings: '0.00',
-              totalEarningsFormatted: 'R$ 0,00'
+              totalEarningsFormatted: formatTotalAmount(0)
             }
           };
         }
@@ -317,7 +318,7 @@ export const getUserProductStats = async () => {
 
     return {
       ...stats,
-      totalEarningsFormatted: `R$ ${stats.totalEarnings.toFixed(2).replace('.', ',')}`
+      totalEarningsFormatted: formatTotalAmount(stats.totalEarnings)
     };
   } catch (error) {
     console.error('❌ Erro ao obter estatísticas dos produtos:', error);

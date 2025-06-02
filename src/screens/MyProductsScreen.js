@@ -85,7 +85,7 @@ const MyProductsScreen = () => {
           </View>
         </View>
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>{item.priceFormatted}/dia</Text>
+          <Text style={styles.price}>{item.priceFormatted}</Text>
           <Text style={styles.earnings}>Ganhos: {item.stats.totalEarningsFormatted}</Text>
         </View>
       </View>
