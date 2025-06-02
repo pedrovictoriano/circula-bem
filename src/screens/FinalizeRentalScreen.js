@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, SafeAreaView, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { createSingleRentalWithDates } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FinalizeRentalScreen = ({ route }) => {
   const { startDate, endDate, selectedDates, product, renter } = route.params;
@@ -13,8 +14,8 @@ const FinalizeRentalScreen = ({ route }) => {
   const [showAllDates, setShowAllDates] = useState(false);
 
   const handleRent = async () => {
-    if (!renter || !product) {
-      alert('Erro: Dados do usuário ou produto não encontrados.');
+    if (!product) {
+      alert('Erro: Dados do produto não encontrados.');
       return;
     }
 
@@ -24,10 +25,18 @@ const FinalizeRentalScreen = ({ route }) => {
     }
 
     try {
+      // Buscar o ID do usuário logado (quem está alugando)
+      const currentUserId = await AsyncStorage.getItem('userId');
+      if (!currentUserId) {
+        alert('Erro: Usuário não autenticado.');
+        return;
+      }
+
       // Criar um único aluguel com múltiplas datas
+      // user_id deve ser do usuário logado (quem está alugando), não do proprietário
       await createSingleRentalWithDates(
         product.id, 
-        renter.user_id, 
+        currentUserId, // ID do usuário logado (locatário)
         selectedDates,
         product.price || 0
       );

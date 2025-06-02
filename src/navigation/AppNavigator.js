@@ -14,9 +14,13 @@ import ProfileScreen from '../screens/ProfileScreen';
 import CreateProduct from '../screens/CreateProduct';
 import CreateGroup from '../screens/CreateGroup';
 import GroupDetailScreen from '../screens/GroupDetailScreen';
+import GroupProductsScreen from '../screens/GroupProductsScreen';
+import SelectProductForGroupScreen from '../screens/SelectProductForGroupScreen';
+import JoinGroupByLinkScreen from '../screens/JoinGroupByLinkScreen';
 import MyRentsScreen from '../screens/MyRentsScreen';
 import MyProductsScreen from '../screens/MyProductsScreen';
 import RentManagementScreen from '../screens/RentManagementScreen';
+import RentDetailScreen from '../screens/RentDetailScreen';
 import GroupsScreen from '../screens/GroupsScreen';
 import AccountScreen from '../screens/AccountScreen';
 import MainLayout from '../components/MainLayout';
@@ -56,6 +60,9 @@ const AppNavigator = () => {
       <Stack.Screen name="CreateProduct" component={CreateProduct} />
       <Stack.Screen name="CreateGroup" component={CreateGroup} options={{ title: 'Criar Grupo' }} />
       <Stack.Screen name="GroupDetail" component={GroupDetailScreen} options={{ title: 'Detalhes do Grupo' }} />
+      <Stack.Screen name="GroupProducts" component={GroupProductsScreen} options={{ title: 'Produtos do Grupo' }} />
+      <Stack.Screen name="SelectProductForGroup" component={SelectProductForGroupScreen} options={{ title: 'Selecionar Produto para o Grupo' }} />
+      <Stack.Screen name="JoinGroupByLink" component={JoinGroupByLinkScreen} options={{ title: 'Entrar por Convite' }} />
       <Stack.Screen name="MyRents" options={{ title: 'Meus Aluguéis' }}>
         {() => (
           <ScreenWrapper>
@@ -63,6 +70,7 @@ const AppNavigator = () => {
           </ScreenWrapper>
         )}
       </Stack.Screen>
+      <Stack.Screen name="RentDetail" component={RentDetailScreen} options={{ title: 'Detalhes do Aluguel' }} />
       <Stack.Screen name="MyProducts" options={{ title: 'Meus Produtos' }}>
         {() => (
           <ScreenWrapper>
