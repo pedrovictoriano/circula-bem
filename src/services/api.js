@@ -16,11 +16,19 @@ const SUPABASE_KEY = SUPABASE_CONFIG.KEY;
 export { SUPABASE_CONFIG };
 
 export const fetchUserById = async (userId) => {
-  const result = await getTable('user_extra_information', `user_id=eq.${userId}`);
-	const addresses = await getTable('addresses', `user_id=eq.${userId}`);
-	result[0].addresses = addresses;
+  // Especificar todos os campos necessários, incluindo subscription
+  const result = await getTable('user_extra_information', `user_id=eq.${userId}&select=*`);
+  const addresses = await getTable('addresses', `user_id=eq.${userId}`);
+  
+  if (result && result[0]) {
+    result[0].addresses = addresses;
+    // Garantir que subscription tenha um valor padrão caso não exista no banco
+    if (!result[0].subscription) {
+      result[0].subscription = 'free';
+    }
+  }
+  
   return result?.[0] || null;
-	
 };
 
 export const fetchRentedDates = async (productId, startDate, endDate) => {

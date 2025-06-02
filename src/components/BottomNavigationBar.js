@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated } from 're
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import useNavigationStore from '../stores/navigationStore';
+import useUserStore from '../stores/userStore';
+import SubscriptionModal from './SubscriptionModal';
+import { SUBSCRIPTION_FEATURES } from '../utils/subscriptionUtils';
 
 const NAV_ITEMS = [
   { key: 'Home', icon: 'home-outline', label: 'Home' },
@@ -15,8 +18,16 @@ const NAV_ITEMS = [
 const BottomNavigationBar = () => {
   const navigation = useNavigation();
   const { activeTab, setActiveTab } = useNavigationStore();
+  const { isPro, loadUser } = useUserStore();
   const [isAddMenuOpen, setIsAddMenuOpen] = React.useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = React.useState(false);
   const animation = useRef(new Animated.Value(0)).current;
+
+  // Carregar dados do usuário ao montar o componente
+  React.useEffect(() => {
+    console.log('🔄 [BottomNav] Carregando dados do usuário...');
+    loadUser();
+  }, []);
 
   const handlePress = (screen) => {
     if (screen === 'Add') {
@@ -28,6 +39,7 @@ const BottomNavigationBar = () => {
   };
 
   const toggleAddMenu = () => {
+    console.log('🔄 [BottomNav] Toggle menu, isOpen:', isAddMenuOpen);
     const toValue = isAddMenuOpen ? 0 : 1;
     
     Animated.spring(animation, {
@@ -40,6 +52,9 @@ const BottomNavigationBar = () => {
   };
 
   const handleAddOption = (option) => {
+    console.log('🔘 [BottomNav] handleAddOption chamado com:', option);
+    console.log('🔘 [BottomNav] isPro():', isPro());
+    
     setIsAddMenuOpen(false);
     Animated.spring(animation, {
       toValue: 0,
@@ -48,10 +63,29 @@ const BottomNavigationBar = () => {
     }).start();
     
     if (option === 'group') {
+      console.log('🏗️ [BottomNav] Tentativa de criar grupo');
+      // Verificar se o usuário é PRO antes de permitir criar grupo
+      if (!isPro()) {
+        console.log('🚫 [BottomNav] Usuário FREE detectado, mostrando modal de upgrade');
+        setShowSubscriptionModal(true);
+        return;
+      }
+      console.log('✅ [BottomNav] Usuário PRO confirmado, navegando para CreateGroup');
       navigation.navigate('CreateGroup');
     } else if (option === 'product') {
+      console.log('🛍️ [BottomNav] Navegando para CreateProduct');
       navigation.navigate('CreateProduct');
     }
+  };
+
+  const handleUpgradeSubscription = () => {
+    setShowSubscriptionModal(false);
+    console.log('🔄 [BottomNav] Navegar para tela de assinatura PRO');
+    // navigation.navigate('SubscriptionScreen');
+  };
+
+  const handleCloseSubscriptionModal = () => {
+    setShowSubscriptionModal(false);
   };
 
   // Simplificando as animações
@@ -115,60 +149,69 @@ const BottomNavigationBar = () => {
   };
 
   return (
-    <View style={styles.outerContainer}>
-      {/* FAB expandable buttons */}
-      <View style={styles.fabContainer}>
-        <Animated.View style={[styles.fabButton, styles.fabSecondary, productButtonStyle]}>
-          <TouchableOpacity onPress={() => handleAddOption('product')} style={styles.fabTouchable}>
-            <MaterialCommunityIcons name="cube-outline" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View style={[styles.fabButton, styles.fabSecondary, groupButtonStyle]}>
-          <TouchableOpacity onPress={() => handleAddOption('group')} style={styles.fabTouchable}>
-            <MaterialCommunityIcons name="account-group-outline" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
-      {/* Bottom Navigation Bar */}
-      <View style={styles.pillBar}>
-        {NAV_ITEMS.map((item, idx) => {
-          if (item.key === 'Add') {
-            return (
-              <Animated.View key={item.key} style={[styles.addButtonContainer, addButtonRotation]}>
-                <TouchableOpacity
-                  onPress={() => handlePress(item.key)}
-                  style={styles.addButton}
-                  activeOpacity={0.8}
-                >
-                  <MaterialCommunityIcons name={item.icon} size={32} color="#fff" />
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          }
-          const isActive = activeTab === item.key;
-          return (
-            <TouchableOpacity
-              key={item.key}
-              onPress={() => handlePress(item.key)}
-              style={styles.menuItem}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons
-                name={item.icon}
-                size={26}
-                color={isActive ? '#2563eb' : '#A0A0A0'}
-                style={styles.menuIcon}
-              />
-              {item.label ? (
-                <Text style={[styles.menuText, isActive && styles.menuTextActive]}>{item.label}</Text>
-              ) : null}
+    <>
+      <View style={styles.outerContainer}>
+        {/* FAB expandable buttons */}
+        <View style={styles.fabContainer}>
+          <Animated.View style={[styles.fabButton, styles.fabSecondary, productButtonStyle]}>
+            <TouchableOpacity onPress={() => handleAddOption('product')} style={styles.fabTouchable}>
+              <MaterialCommunityIcons name="cube-outline" size={24} color="#FFF" />
             </TouchableOpacity>
-          );
-        })}
+          </Animated.View>
+
+          <Animated.View style={[styles.fabButton, styles.fabSecondary, groupButtonStyle]}>
+            <TouchableOpacity onPress={() => handleAddOption('group')} style={styles.fabTouchable}>
+              <MaterialCommunityIcons name="account-group-outline" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
+        {/* Bottom Navigation Bar */}
+        <View style={styles.pillBar}>
+          {NAV_ITEMS.map((item, idx) => {
+            if (item.key === 'Add') {
+              return (
+                <Animated.View key={item.key} style={[styles.addButtonContainer, addButtonRotation]}>
+                  <TouchableOpacity
+                    onPress={() => handlePress(item.key)}
+                    style={styles.addButton}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name={item.icon} size={32} color="#fff" />
+                  </TouchableOpacity>
+                </Animated.View>
+              );
+            }
+            const isActive = activeTab === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => handlePress(item.key)}
+                style={styles.menuItem}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name={item.icon}
+                  size={26}
+                  color={isActive ? '#2563eb' : '#A0A0A0'}
+                  style={styles.menuIcon}
+                />
+                {item.label ? (
+                  <Text style={[styles.menuText, isActive && styles.menuTextActive]}>{item.label}</Text>
+                ) : null}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
-    </View>
+
+      <SubscriptionModal
+        visible={showSubscriptionModal}
+        onClose={handleCloseSubscriptionModal}
+        onUpgrade={handleUpgradeSubscription}
+        feature={SUBSCRIPTION_FEATURES.CREATE_GROUPS}
+      />
+    </>
   );
 };
 
