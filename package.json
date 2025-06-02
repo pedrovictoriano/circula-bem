@@ -52,8 +52,5 @@
     "@babel/core": "^7.26.0",
     "@types/react-native": "^0.73.0"
   },
-  "private": true,
-  "overrides": {
-    "@supabase/realtime-js": "0.0.0"
-  }
+  "private": true
 }
