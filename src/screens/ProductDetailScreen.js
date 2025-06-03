@@ -4,6 +4,7 @@ import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { fetchProductById } from '../services/productService';
 import { fetchUserById } from '../services/api';
 import ProfileImage from '../components/ProfileImage';
+import { formatPrice } from '../utils/priceUtils';
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
@@ -117,7 +118,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
           <Text style={styles.title}>{product.name}</Text>
           
           <View style={styles.priceContainer}>
-            <Text style={styles.price}>R$ {product.price ? product.price.toFixed(2) : '0,00'}</Text>
+            <Text style={styles.price}>{formatPrice(product.price)}</Text>
             <Text style={styles.priceLabel}>/ dia</Text>
           </View>
 

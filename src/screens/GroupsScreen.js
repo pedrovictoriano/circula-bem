@@ -16,13 +16,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SUPABASE_CONFIG } from '../config/env';
 import useGroupStore from '../stores/groupStore';
+import useUserStore from '../stores/userStore';
+import SubscriptionModal from '../components/SubscriptionModal';
+import { SUBSCRIPTION_FEATURES } from '../utils/subscriptionUtils';
 
 const GroupsScreen = () => {
   const navigation = useNavigation();
   const [refreshing, setRefreshing] = useState(false);
   const [showAllGroups, setShowAllGroups] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   
-  // Zustand store
+  // Zustand stores
   const {
     groups,
     allGroups,
@@ -35,8 +39,11 @@ const GroupsScreen = () => {
     clearError
   } = useGroupStore();
 
+  const { isPro, loadUser } = useUserStore();
+
   useEffect(() => {
     loadGroups();
+    loadUser(); // Carregar dados do usuário
   }, [showAllGroups]);
 
   const loadGroups = async () => {
@@ -68,7 +75,31 @@ const GroupsScreen = () => {
   };
 
   const handleCreateGroup = () => {
+    console.log('🏗️ [GroupsScreen] Tentativa de criar grupo iniciada');
+    console.log('🏗️ [GroupsScreen] isPro():', isPro());
+    console.log('🏗️ [GroupsScreen] subscription na store:', useUserStore.getState().subscription);
+    
+    // Verificar se o usuário é PRO antes de permitir criar grupo
+    if (!isPro()) {
+      console.log('🚫 [GroupsScreen] Usuário FREE detectado, mostrando modal de upgrade');
+      setShowSubscriptionModal(true);
+      return;
+    }
+
+    console.log('✅ [GroupsScreen] Usuário PRO confirmado, navegando para CreateGroup');
+    // Se for PRO, navegar normalmente
     navigation.navigate('CreateGroup');
+  };
+
+  const handleUpgradeSubscription = () => {
+    setShowSubscriptionModal(false);
+    // Aqui você pode navegar para a tela de assinatura
+    console.log('Navegar para tela de assinatura PRO');
+    // navigation.navigate('SubscriptionScreen');
+  };
+
+  const handleCloseSubscriptionModal = () => {
+    setShowSubscriptionModal(false);
   };
 
   const handleJoinByInvite = () => {
@@ -365,6 +396,16 @@ const GroupsScreen = () => {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Modal de assinatura */}
+      <SubscriptionModal
+        visible={showSubscriptionModal}
+        onClose={handleCloseSubscriptionModal}
+        onUpgrade={handleUpgradeSubscription}
+        title={SUBSCRIPTION_FEATURES.CREATE_GROUP.title}
+        description={SUBSCRIPTION_FEATURES.CREATE_GROUP.description}
+        feature={SUBSCRIPTION_FEATURES.CREATE_GROUP.feature}
+      />
     </SafeAreaView>
   );
 };

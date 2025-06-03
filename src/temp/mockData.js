@@ -49,4 +49,12 @@ export const mockProducts = [
       { image_url: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=400&q=80' },
     ],
   },
+  {
+    id: 5,
+    name: 'Livro de Programação',
+    price: 0.00,
+    product_images: [
+      { image_url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80' },
+    ],
+  },
 ]; 

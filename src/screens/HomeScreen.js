@@ -7,6 +7,7 @@ import { fetchCategories } from '../services/categoryService';
 import { fetchProducts } from '../services/productService';
 import { fetchUserById } from '../services/api';
 import ProfileImage from '../components/ProfileImage';
+import { formatPrice } from '../utils/priceUtils';
 
 const INFO_CARDS = [
   { icon: 'clock-outline', label: 'Ativos', value: 5 },
@@ -94,7 +95,7 @@ const HomeScreen = () => {
           style={styles.productImage}
         />
         <Text style={styles.productTitle}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price ? `R$ ${item.price.toFixed(2)}` : ''}</Text>
+        <Text style={styles.productPrice}>{formatPrice(item.price)}</Text>
       </TouchableOpacity>
     );
   }, [navigation]);

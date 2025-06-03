@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchUserById } from '../services/api';
 import ProfileImage from '../components/ProfileImage';
 import { maskCPF } from '../utils/cpfUtils';
+import { formatPhone } from '../utils/phoneUtils';
 
 const ProfileScreen = () => {
   const [userData, setUserData] = useState(null);
@@ -81,6 +82,12 @@ const ProfileScreen = () => {
             <Icon name="id-card" size={18} color="#4F8CFF" />
             <Text style={styles.infoText}>{maskCPF(userData.registration_number)}</Text>
           </View>
+          {userData.phone_number && (
+            <View style={styles.infoItem}>
+              <Icon name="phone" size={18} color="#4F8CFF" />
+              <Text style={styles.infoText}>{formatPhone(userData.phone_number)}</Text>
+            </View>
+          )}
           {userData.addresses && userData.addresses.length > 0 && (
             <View style={styles.infoItem}>
               <Icon name="home" size={18} color="#4F8CFF" />

@@ -13,6 +13,7 @@ import KeyboardDismissView from '../components/KeyboardDismissView';
 import LoadingOverlay from '../components/LoadingOverlay';
 import EULAModal from '../components/EULAModal';
 import { useLoading } from '../hooks/useLoading';
+import { validatePhoneForYup } from '../utils/phoneUtils';
 
 function validateCPF(cpf) {
   cpf = cpf.replace(/[^\d]+/g, '');
@@ -35,6 +36,9 @@ const schema = Yup.object().shape({
   email: Yup.string().email('Email inválido').required('Email obrigatório'),
   pwd: Yup.string().min(6, 'Mínimo de 6 caracteres').required('Senha obrigatória'),
   regNum: Yup.string().required('CPF obrigatório').test('cpf', 'CPF inválido', validateCPF),
+  phoneNumber: Yup.string()
+    .required('Telefone obrigatório')
+    .test('phone', 'Telefone inválido', validatePhoneForYup),
   cep: Yup.string().required('CEP obrigatório'),
   state: Yup.string().required('Estado obrigatório'),
   city: Yup.string().required('Cidade obrigatória'),
@@ -58,6 +62,7 @@ const SignUpScreen = () => {
     email: useRef(null),
     pwd: useRef(null),
     regNum: useRef(null),
+    phoneNumber: useRef(null),
     cep: useRef(null),
     state: useRef(null),
     city: useRef(null),
@@ -87,7 +92,7 @@ const SignUpScreen = () => {
 
   const handleSubmitEditing = (currentField) => {
     const fields = [
-      'name', 'surName', 'email', 'pwd', 'regNum',
+      'name', 'surName', 'email', 'pwd', 'regNum', 'phoneNumber',
       'cep', 'state', 'city', 'neighborhood', 'street',
       'number', 'complement'
     ];
@@ -171,6 +176,7 @@ const SignUpScreen = () => {
             name: values.name,
             surName: values.surName,
             regNum: values.regNum.replace(/\D/g, ''),
+            phoneNumber: values.phoneNumber,
             address,
             imageUrl: null // Primeiro sem imagem
           }),
@@ -205,6 +211,7 @@ const SignUpScreen = () => {
             name: values.name,
             surName: values.surName,
             regNum: values.regNum.replace(/\D/g, ''),
+            phoneNumber: values.phoneNumber,
             address,
             imageUrl: null
           }),
@@ -237,7 +244,7 @@ const SignUpScreen = () => {
     <KeyboardDismissView contentContainerStyle={styles.scrollContainer}>
       <Formik
         initialValues={{
-          name: '', surName: '', email: '', pwd: '', regNum: '',
+          name: '', surName: '', email: '', pwd: '', regNum: '', phoneNumber: '',
           cep: '', state: '', city: '', neighborhood: '', street: '', number: '', complement: ''
         }}
         validationSchema={schema}
@@ -278,6 +285,7 @@ const SignUpScreen = () => {
               ['Email', 'email'], 
               ['Senha', 'pwd'], 
               ['CPF', 'regNum'], 
+              ['Telefone', 'phoneNumber'], 
               ['CEP', 'cep'], 
               ['Estado', 'state'], 
               ['Cidade', 'city'], 
@@ -297,6 +305,9 @@ const SignUpScreen = () => {
                     if (field === 'cep') {
                       const cleanCEP = text.replace(/\D/g, '');
                       setFieldValue('cep', cleanCEP);
+                    } else if (field === 'phoneNumber') {
+                      const cleanPhone = text.replace(/\D/g, '');
+                      setFieldValue('phoneNumber', cleanPhone);
                     }
                   }}
                   onBlur={(e) => {
@@ -309,7 +320,7 @@ const SignUpScreen = () => {
                   autoCapitalize={field === 'email' ? 'none' : 'words'}
                   keyboardType={
                     field === 'email' ? 'email-address' :
-                    field === 'regNum' || field === 'cep' || field === 'number' ? 'numeric' :
+                    field === 'regNum' || field === 'cep' || field === 'number' || field === 'phoneNumber' ? 'numeric' :
                     'default'
                   }
                   editable={field === 'cep' ? !isLoadingCEP : true}

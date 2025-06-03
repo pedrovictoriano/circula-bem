@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, SafeAreaVi
 import { useNavigation } from '@react-navigation/native';
 import { createSingleRentalWithDates } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatPrice, formatTotalAmount } from '../utils/priceUtils';
 
 const FinalizeRentalScreen = ({ route }) => {
   const { startDate, endDate, selectedDates, product, renter } = route.params;
@@ -125,7 +126,7 @@ const FinalizeRentalScreen = ({ route }) => {
                 {product.name || 'Produto sem nome'}
               </Text>
               <Text style={styles.itemPrice}>
-                R$ {product.price ? product.price.toFixed(2) : '0,00'} / dia
+                {formatPrice(product.price, true)}
               </Text>
             </View>
           </View>
@@ -142,7 +143,7 @@ const FinalizeRentalScreen = ({ route }) => {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Valor total:</Text>
             <Text style={styles.detailValue}>
-              R$ {product?.price ? (product.price * selectedDates.length).toFixed(2) : '0,00'}
+              {formatTotalAmount(product?.price ? (product.price * selectedDates.length) : 0)}
             </Text>
           </View>
         </View>

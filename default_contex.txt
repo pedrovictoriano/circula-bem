@@ -8,6 +8,8 @@ create table public.user_extra_information (
   last_name character varying(50) not null,
   user_id uuid null default auth.uid (),
   image_url character varying null,
+  subscription public.user_subscription null default 'free'::user_subscription,
+  phone_number text null,
   constraint PK_user primary key (registration_number),
   constraint user_registrationnumber_key unique (registration_number),
   constraint user_extra_information_user_id_fkey foreign KEY (user_id) references auth.users (id) on update RESTRICT on delete CASCADE
@@ -142,6 +144,11 @@ create type public.group_product_status as enum (
   'pendente',
   'confirmado',
   'negado'
+);
+
+create type public.user_subscription as enum (
+  'free',
+  'pro'
 );
 
 # USE ZUSTAND WHEN USING GLOBAL STATE.

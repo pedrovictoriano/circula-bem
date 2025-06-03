@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { getTable, updateTableById } from '../services/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatPrice, formatPriceFromCents } from '../utils/priceUtils';
 
 const RentManagementScreen = () => {
   const navigation = useNavigation();
@@ -94,8 +95,8 @@ const RentManagementScreen = () => {
               productId: rent.product_id,
               productName: product?.name || 'Produto não encontrado',
               price: product?.price || 0,
-              priceFormatted: `R$ ${parseFloat(product?.price || 0).toFixed(2).replace('.', ',')}`,
-              totalAmount: rent.total_amount ? `R$ ${(rent.total_amount / 100).toFixed(2).replace('.', ',')}` : 'R$ 0,00',
+              priceFormatted: formatPrice(product?.price || 0, true),
+              totalAmount: rent.total_amount ? formatPriceFromCents(rent.total_amount) : 'Grátis',
               dates: dates,
               startDate: startDate || 'Data não definida',
               endDate: endDate || 'Data não definida',
