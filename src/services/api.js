@@ -93,7 +93,7 @@ export const updateRentalStatus = async (rentalId, newStatus) => {
   }
 };
 
-export const registerUser = async ({ email, pwd, name, surName, regNum, address, imageUrl = null }) => {
+export const registerUser = async ({ email, pwd, name, surName, regNum, phoneNumber, address, imageUrl = null }) => {
   const userData = {
     email,
     password: pwd
@@ -118,6 +118,7 @@ export const registerUser = async ({ email, pwd, name, surName, regNum, address,
     first_name: name,
     last_name: surName,
     registration_number: regNum,
+    phone_number: phoneNumber || null,
     image_url: imageUrl
   },
   false);

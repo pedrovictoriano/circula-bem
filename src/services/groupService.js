@@ -356,7 +356,7 @@ export const fetchPendingMemberships = async (groupId) => {
     const enrichedPendingMemberships = await Promise.all(
       pendingMemberships.map(async (membership) => {
         try {
-          const userQuery = `user_id=eq.${membership.user_id}&select=first_name,last_name,image_url,registration_number`;
+          const userQuery = `user_id=eq.${membership.user_id}&select=first_name,last_name,image_url,registration_number,phone_number`;
           const users = await getTable('user_extra_information', userQuery);
           const user = users && users.length > 0 ? users[0] : null;
           
@@ -367,13 +367,15 @@ export const fetchPendingMemberships = async (groupId) => {
               last_name: user.last_name,
               full_name: `${user.first_name} ${user.last_name}`,
               image_url: user.image_url,
-              registration_number: user.registration_number
+              registration_number: user.registration_number,
+              phone_number: user.phone_number
             } : {
               first_name: 'Usuário',
               last_name: 'Desconhecido',
               full_name: 'Usuário Desconhecido',
               image_url: null,
-              registration_number: 'N/A'
+              registration_number: 'N/A',
+              phone_number: null
             }
           };
         } catch (error) {
@@ -385,7 +387,8 @@ export const fetchPendingMemberships = async (groupId) => {
               last_name: 'Desconhecido',
               full_name: 'Usuário Desconhecido',
               image_url: null,
-              registration_number: 'N/A'
+              registration_number: 'N/A',
+              phone_number: null
             }
           };
         }
@@ -480,9 +483,9 @@ export const fetchGroupById = async (groupId) => {
     
     // Para cada membro, buscar informações adicionais do usuário
     const enrichedMembers = await Promise.all(
-      (members || []).map(async (member) => {
+      members.map(async (member) => {
         try {
-          const userQuery = `user_id=eq.${member.user_id}&select=first_name,last_name,image_url,registration_number`;
+          const userQuery = `user_id=eq.${member.user_id}&select=first_name,last_name,image_url,registration_number,phone_number`;
           const users = await getTable('user_extra_information', userQuery);
           const user = users && users.length > 0 ? users[0] : null;
           
@@ -493,13 +496,15 @@ export const fetchGroupById = async (groupId) => {
               last_name: user.last_name,
               full_name: `${user.first_name} ${user.last_name}`,
               image_url: user.image_url,
-              registration_number: user.registration_number
+              registration_number: user.registration_number,
+              phone_number: user.phone_number
             } : {
               first_name: 'Usuário',
               last_name: 'Desconhecido',
               full_name: 'Usuário Desconhecido',
               image_url: null,
-              registration_number: 'N/A'
+              registration_number: 'N/A',
+              phone_number: null
             }
           };
         } catch (error) {
@@ -511,7 +516,8 @@ export const fetchGroupById = async (groupId) => {
               last_name: 'Desconhecido',
               full_name: 'Usuário Desconhecido',
               image_url: null,
-              registration_number: 'N/A'
+              registration_number: 'N/A',
+              phone_number: null
             }
           };
         }
