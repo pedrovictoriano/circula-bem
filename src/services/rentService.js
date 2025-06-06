@@ -1,4 +1,4 @@
-import { getTable, insertIntoTable, updateInTable } from './supabaseClient';
+import { getTable, insertIntoTable } from './supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { formatPrice, formatPriceFromCents } from '../utils/priceUtils';
 
