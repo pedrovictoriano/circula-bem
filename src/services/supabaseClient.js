@@ -48,7 +48,7 @@ export async function getTable(table, filters = '') {
   }
 }
 
-export async function insertIntoTable(table, data, useAuthroization = true) {
+export async function insertIntoTable(table, data, useAuthorization = true) {
   try {
     const token = await AsyncStorage.getItem('token');
     const headers = {
@@ -57,7 +57,7 @@ export async function insertIntoTable(table, data, useAuthroization = true) {
       Prefer: 'return=representation',
     };
 
-    if (useAuthroization) {
+  if (useAuthorization) {
       headers.Authorization = `Bearer ${token || SUPABASE_KEY}`;
     }
 
